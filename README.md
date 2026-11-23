@@ -6,6 +6,10 @@ Connect Codex or Claude Desktop to locally installed **Maxsurf Modeler, Stabilit
 
 The MCP lets an assistant inspect models, set supported analysis inputs and request operations from Bentley's native applications. It runs on your Windows computer and uses your installed Maxsurf software.
 
+## Project attribution
+
+This repository builds on [Maxsurf MCP](https://github.com/ishakkicelik/maxsurf-mcp), originally created by Ismail Hakki Celik and released under the [MIT License](LICENSE). Ali Özden Işık extended the project with native geometry and analysis workflows, installed API discovery, and 144 default MCP tools. The original contribution is documented in [upstream pull request #1](https://github.com/ishakkicelik/maxsurf-mcp/pull/1).
+
 **Expanded source: 0.2.0-rc.5 · 144 default tools · technical preview.**
 The checkout adds native geometry formats, meshes and linked surfaces, analysis
 controls, exhaustive installed API discovery, and an opt-in metadata-validated
@@ -76,7 +80,7 @@ The default design workspace is `%LOCALAPPDATA%\MaxsurfMCP\runtime`. [Codex setu
 
 ## Install through PowerShell
 
-Extract the **source ZIP** to `C:\MaxsurfSource`. In PowerShell:
+Clone this repository to `C:\MaxsurfSource` or extract the **source ZIP** there. In PowerShell:
 
 ```powershell
 Set-Location 'C:\MaxsurfSource'

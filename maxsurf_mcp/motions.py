@@ -114,7 +114,9 @@ def _results_table(app: Any, table: Any) -> int:
     except MaxsurfValidationError as exc:
         raise MaxsurfValidationError(
             "unknown native Motions results table", requested=table,
-            available=sorted(native_enum.members(app, "skTabEnumerationType")),
+            # The live type also holds skInp* members, which the guard above refuses.
+            available=sorted(name for name in native_enum.members(app, "skTabEnumerationType")
+                             if name.startswith("skTab")),
         ) from exc
 
 

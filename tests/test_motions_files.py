@@ -69,6 +69,16 @@ class FilesTests(unittest.TestCase):
                 str(self.path),"skATStripTheory",1,1,1)
         self.assertEqual(self.calls,[])
 
+    def test_unknown_table_lists_only_exportable_tables(self):
+        # Live skTabEnumerationType also holds skInp* members, which the table guard refuses.
+        with patch("maxsurf_mcp.native_enum.members",
+                   return_value={"skTabGlobalRAOs":7,"skInpHeadings":1}), \
+             self.assertRaises(MaxsurfValidationError) as caught:
+            files.export_motions_condition_table.__wrapped__(
+                str(self.path),"skTabBogus",1,1,1)
+        self.assertEqual(caught.exception.details["available"],["skTabGlobalRAOs"])
+        self.assertEqual(caught.exception.details["requested"],"skTabBogus")
+
     def test_optional_axes_use_methods_and_native_counts(self):
         files.export_motions_condition_table.__wrapped__(
             str(self.path),"skTabGlobalRAOs",1,1,1,

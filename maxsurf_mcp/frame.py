@@ -196,11 +196,8 @@ def _read_datum_selectors(app: Any, frame: Any) -> dict[str, dict[str, Any]]:
         entry = _read_member(frame, spec["member"], cast=int)
         entry["enum_name"] = None
         if entry["status"] == "read":
-            try:
-                entry["enum_name"] = native_enum.name_of(
-                    app, spec["enum_type"], entry["value"])
-            except MaxsurfValidationError:
-                pass  # an unavailable enum type leaves the name unresolved
+            entry["enum_name"] = native_enum.name_of(
+                app, spec["enum_type"], entry["value"])
         entry["available"] = sorted(spec["targets"])
         selectors[field] = entry
     return selectors

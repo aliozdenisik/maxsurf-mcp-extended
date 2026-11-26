@@ -8,7 +8,6 @@ from __future__ import annotations
 from typing import Any
 
 from . import com, native_enum, validation as val
-from . import constants  # noqa: F401 - native_enum's fallback source, patched by tests
 from .audit import Channel, Classification
 from .errors import MaxsurfCOMError, MaxsurfValidationError
 from .guard import guarded, register

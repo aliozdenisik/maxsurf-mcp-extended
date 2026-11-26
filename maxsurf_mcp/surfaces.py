@@ -41,8 +41,6 @@ import json
 from typing import Any
 
 from . import com, native_enum
-# Unused here; kept so tests can patch discover via this module path.
-from . import constants as comconstants  # noqa: F401
 from .audit import Channel, Classification
 from .errors import MaxsurfCOMError, MaxsurfSafetyError, MaxsurfValidationError
 from .guard import guarded, register

@@ -37,7 +37,7 @@ class FileTests(unittest.TestCase):
     def test_export_calls_two_argument_contract_and_checks_file(self):
         design = NS(SaveResultsTable=Mock(side_effect=lambda table, p: Path(p).write_bytes(b"native\tdata\n")))
         with patch.object(com, "connect", return_value=NS(Design=design)), \
-                patch.object(files, "_constant", return_value=31):
+                patch("maxsurf_mcp.native_enum.constant", return_value=31):
             result = json.loads(files.export_stability_results_table.__wrapped__(
                 "hmResultCriteria", str(self.root / "criteria.txt")))
         design.SaveResultsTable.assert_called_once()
@@ -55,7 +55,7 @@ class FileTests(unittest.TestCase):
         for create in (False, True):
             design = NS(SaveResultsTable=Mock(side_effect=lambda t, p: Path(p).touch() if create else None))
             with patch.object(com, "connect", return_value=NS(Design=design)), \
-                    patch.object(files, "_constant", return_value=31), self.assertRaises(MaxsurfCOMError):
+                    patch("maxsurf_mcp.native_enum.constant", return_value=31), self.assertRaises(MaxsurfCOMError):
                 files.export_stability_results_table.__wrapped__(
                     "hmResultCriteria", str(self.root / "empty.txt"), overwrite=True)
 
@@ -64,7 +64,7 @@ class FileTests(unittest.TestCase):
         target.write_bytes(b"old")
         design = NS(SaveResultsTable=Mock())
         with patch.object(com, "connect", return_value=NS(Design=design)), \
-                patch.object(files, "_constant", return_value=31), self.assertRaises(MaxsurfCOMError):
+                patch("maxsurf_mcp.native_enum.constant", return_value=31), self.assertRaises(MaxsurfCOMError):
             files.export_stability_results_table.__wrapped__("hmResultCriteria", str(target), True)
         self.assertEqual(target.read_bytes(), b"old")
         self.assertEqual(list(self.root.iterdir()), [target])

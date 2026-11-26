@@ -44,7 +44,7 @@ class LocationTests(unittest.TestCase):
     def configure(self, design, locations=None, spectra=None, replace=False):
         with patch.object(motions.com, "connect"), patch.object(
             motions, "_require_ready", return_value=design
-        ), patch.object(stability, "_constant", return_value=1):
+        ), patch("maxsurf_mcp.native_enum.constant", return_value=1):
             return json.loads(motions.configure_motions_analysis.__wrapped__(
                 "[180]", "[4]", json.dumps(spectra or [
                     {"name":"sea","type":"skSpectrumJONSWAP","hs_m":2,"tp_s":8}
@@ -121,7 +121,7 @@ class SettingsTests(unittest.TestCase):
                 connect.assert_not_called()
 
     def test_native_enum_values_are_discovered_not_guessed(self):
-        with patch.object(controls.constants,"discover", return_value={"constants":{
+        with patch("maxsurf_mcp.constants.discover", return_value={"constants":{
             "skWFArbitraryWaveHeading":1,"skARHavelock":4
         }}):
             r = self.invoke(controls.set_motions_formulation, True,

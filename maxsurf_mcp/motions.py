@@ -105,6 +105,19 @@ def _digest(path: Any) -> dict[str, Any]:
     return {"bytes": size, "sha256": digest.hexdigest()}
 
 
+def _results_table(app: Any, table: Any) -> int:
+    """Native number of one skTab results table; unknown names list the valid ones."""
+    try:
+        if not isinstance(table, str) or not table.startswith("skTab"):
+            raise MaxsurfValidationError("unknown native Motions results table")
+        return native_enum.constant(app, table)
+    except MaxsurfValidationError as exc:
+        raise MaxsurfValidationError(
+            "unknown native Motions results table", requested=table,
+            available=sorted(native_enum.members(app, "skTabEnumerationType")),
+        ) from exc
+
+
 def _require_ready(app: Any, *, loaded: bool = True) -> Any:
     initialized = _scalar(app, "IsInitializedCorrectly", bool)
     if initialized["status"] != "read" or initialized["value"] is not True:
@@ -287,12 +300,11 @@ def configure_motions_analysis(
                         for i in range(1, int(collection.Count)+1)}
             if existing.intersection(row[0].casefold() for row in rows):
                 raise MaxsurfValidationError("name already exists", collection=label)
-    from .stability import _constant
-    atype=_constant(app,val.name(analysis_type))
-    vtype=_constant(app,val.name(vessel_type))
+    atype=native_enum.constant(app,val.name(analysis_type))
+    vtype=native_enum.constant(app,val.name(vessel_type))
     if not analysis_type.startswith("skAT") or not vessel_type.startswith("skVT"):
         raise MaxsurfValidationError("wrong analysis/vessel enum family")
-    types={kind:_constant(app,kind) for _,kind,_ in spec_rows}
+    types={kind:native_enum.constant(app,kind) for _,kind,_ in spec_rows}
     spectrum_readbacks=[]
     location_readbacks=[]
     try:
@@ -536,9 +548,7 @@ def export_motions_table(path: str, table: str, overwrite: bool = False) -> str:
                                       overwrite=overwrite, allowed_suffixes=(".txt",))
     app = com.connect("motions")
     design = _require_ready(app)
-    if not isinstance(table, str) or not table.startswith("skTab"):
-        raise MaxsurfValidationError("unknown native Motions results table")
-    number = native_enum.constant(app, table)
+    number = _results_table(app, table)
     target.parent.mkdir(parents=True, exist_ok=True)
     staged = target.with_name(target.stem + "." + uuid4().hex + target.suffix)
     try:

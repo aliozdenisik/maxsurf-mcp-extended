@@ -53,15 +53,6 @@ MARKER_PROPERTIES: dict[str, tuple[str, str]] = {
     "type": ("Type", "enum"),
 }
 
-# shortcut: the constants fallback filters msMarkerType by prefix ``msMT``, which
-# msMeshType shares (msMTTriIso...). Delete once native_enum's fallback can tell
-# the two apart; on the type-library path this guard never rejects anything.
-MARKER_TYPE_NAMES = (
-    "msMTInternal", "msMTTopEdge", "msMTBottomEdge", "msMTLeftEdge",
-    "msMTRightEdge", "msMTTopRight", "msMTTopLeft", "msMTBottomRight",
-    "msMTBottomLeft",
-)
-
 
 def _finite(field: str, value: Any) -> float:
     if isinstance(value, bool):
@@ -668,12 +659,7 @@ def _marker_value(app: Any, field: str, value: Any) -> Any:
         return _finite(field, value)
     if kind == "int":
         return _integer(field, value, minimum=0)
-    resolved = native_enum.resolve(app, "msMarkerType", value, field)
-    if resolved["enum_name"] not in MARKER_TYPE_NAMES:
-        raise MaxsurfValidationError(
-            f"unknown {field} enum member", field=field, requested=value,
-            enum_type="msMarkerType", available=sorted(MARKER_TYPE_NAMES))
-    return resolved["value"]
+    return native_enum.resolve(app, "msMarkerType", value, field)["value"]
 
 
 @guarded(classification=Classification.WRITE_GEOMETRY, module="modeler_data",

@@ -76,7 +76,7 @@ class ReadbackTests(unittest.TestCase):
                 with patch.dict(os.environ, {"MAXSURF_MCP_WORKSPACE_ROOTS": tmp}), \
                         patch.object(com, "connect", return_value=NS(Design=design)), \
                         patch.object(com, "session_for", return_value=owner), \
-                        patch.object(stability, "_constant", return_value=1):
+                        patch("maxsurf_mcp.native_enum.constant", return_value=1):
                     call = lambda: stability.define_subdivision.__wrapped__(
                         json.dumps([self.room()]), clear_first=True, confirm_replace=True,
                         backup_path=str(Path(tmp) / "backup.htk"))
@@ -107,7 +107,7 @@ class ReadbackTests(unittest.TestCase):
 
     def run_room(self, design, kind):
         with patch.object(com, "connect", return_value=NS(Design=design)), \
-                patch.object(stability, "_constant", side_effect=lambda app, name:
+                patch("maxsurf_mcp.native_enum.constant", side_effect=lambda app, name:
                              3 if name == "hmCTNBV" else 1):
             return json.loads(stability.define_subdivision.__wrapped__(json.dumps([self.room(kind)])))
 
@@ -147,7 +147,7 @@ class ReadbackTests(unittest.TestCase):
     def run_mass(self, design):
         row = dict(name="weight", mass_t=2.5, lcg=2, tcg=0, vcg=1, aft=0, fwd=4, fsm=.7)
         with patch.object(com, "connect", return_value=NS(Design=design)), \
-                patch.object(stability, "_constant", return_value=1):
+                patch("maxsurf_mcp.native_enum.constant", return_value=1):
             return json.loads(stability.define_loadcase.__wrapped__("case", "{}", json.dumps([row])))
 
     def test_mass_and_fsm_conversion_read_back_si_values(self):
@@ -166,7 +166,7 @@ class ReadbackTests(unittest.TestCase):
     def test_existing_keypoint_collision_precedes_add(self):
         points = Points([NS(Name="opening")])
         with patch.object(com, "connect", return_value=NS(Design=NS(KeyPoints=points))), \
-                patch.object(stability, "_constant", return_value=3), self.assertRaises(MaxsurfSafetyError):
+                patch("maxsurf_mcp.native_enum.constant", return_value=3), self.assertRaises(MaxsurfSafetyError):
             stability.add_downflooding_points.__wrapped__(
                 json.dumps([dict(name="opening", x=0, y=0, z=1, kind="downflooding")]))
         points.Add.assert_not_called()
@@ -180,7 +180,7 @@ class ReadbackTests(unittest.TestCase):
                 points.rows.append(row)
             points.Add.side_effect = add
             with self.subTest(member=member), patch.object(com, "connect", return_value=NS(Design=NS(KeyPoints=points))), \
-                    patch.object(stability, "_constant", return_value=3), self.assertRaises(MaxsurfCOMError):
+                    patch("maxsurf_mcp.native_enum.constant", return_value=3), self.assertRaises(MaxsurfCOMError):
                 stability.add_downflooding_points.__wrapped__(
                     json.dumps([dict(name="opening", x=0, y=0, z=1, kind="downflooding")]))
 

@@ -22,7 +22,6 @@ from typing import Any
 
 from . import audit, com, config, native_enum, workspace
 from . import validation as val
-from . import constants as comconstants  # noqa: F401 - native_enum's fallback source, patched by tests
 from .audit import Channel, Classification
 from .errors import (
     MaxsurfAnalysisError,
@@ -83,10 +82,6 @@ def _scalar(obj: Any, member: str, cast: Any = None) -> dict[str, Any]:
     return {"value":value,"status":"read"}
 
 
-def _method_catalog(app: Any) -> dict[str, int]:
-    return native_enum.members(app, "hsMethodType")
-
-
 def _require_ready(app: Any, *, loaded: bool = True) -> Any:
     initialized = _scalar(app, "IsInitializedCorrectly", bool)
     if initialized["status"] != "read" or initialized["value"] is not True:
@@ -107,8 +102,12 @@ def _require_ready(app: Any, *, loaded: bool = True) -> Any:
 
 
 def _selected_methods(app: Any, design: Any) -> list[dict[str, Any]]:
+    try:
+        catalog = native_enum.members(app, "hsMethodType")
+    except MaxsurfValidationError:
+        catalog = {}  # no hsMethodType members: report an empty method list
     selected = []
-    for name, value in sorted(_method_catalog(app).items(), key=lambda x: x[1]):
+    for name, value in sorted(catalog.items(), key=lambda x: x[1]):
         try:
             is_selected = bool(design.Methods.IsSelected(value))
         except Exception as exc:  # noqa: BLE001
@@ -186,8 +185,12 @@ def get_resistance_status() -> str:
         if entry["status"] == "read":
             entry["knots"] = entry["value"] / MPS_PER_KNOT
 
+    try:
+        catalog = native_enum.members(app, "hsMethodType")
+    except MaxsurfValidationError:
+        catalog = {}  # no hsMethodType members: report an empty method list
     methods = []
-    for name, value in sorted(_method_catalog(app).items(), key=lambda x: x[1]):
+    for name, value in sorted(catalog.items(), key=lambda x: x[1]):
         try:
             methods.append({"name": name, "value": value,
                             "selected": bool(design.Methods.IsSelected(value)),
@@ -244,7 +247,7 @@ def configure_resistance_analysis(low_knots: float, high_knots: float,
         slender_body_one_plus_k,"slender_body_one_plus_k",positive=True)
     app=com.connect("resistance")
     design=_require_ready(app)
-    catalog=_method_catalog(app)
+    catalog=native_enum.members(app,"hsMethodType")
     unknown=set(requested)-set(catalog)
     if unknown:
         raise MaxsurfValidationError("unavailable methods",names=sorted(unknown))
@@ -581,7 +584,7 @@ def calculate_free_surface(path: str, speed_knots: float,
 
     app = com.connect("resistance")
     design = _require_ready(app)
-    catalog = _method_catalog(app)
+    catalog = native_enum.members(app, "hsMethodType")
     if "hsMTSlenderBody" not in catalog:
         raise MaxsurfValidationError(
             "the Slender Body method, which drives the free-surface field, is "

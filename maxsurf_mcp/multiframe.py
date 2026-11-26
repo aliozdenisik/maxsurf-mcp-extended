@@ -9,7 +9,7 @@ import json
 import math
 import os
 from typing import Any
-from . import com, constants, native_enum, validation as val, workspace
+from . import com, native_enum, validation as val, workspace
 from .audit import Channel, Classification
 from .errors import MaxsurfAnalysisError, MaxsurfCOMError, MaxsurfSafetyError, MaxsurfValidationError
 from .guard import guarded, register

@@ -37,7 +37,7 @@ class FilesTests(unittest.TestCase):
                          ExportResults=Mock(side_effect=lambda table,path:export(path)))
         for p in (patch.object(files.com,"connect"),
                   patch.object(files,"_require_ready",return_value=self.design),
-                  patch.object(files.constants,"discover",return_value={"constants":{"skTabGlobalRAOs":7}}),
+                  patch("maxsurf_mcp.constants.discover",return_value={"constants":{"skTabGlobalRAOs":7}}),
                   patch.object(files.com,"session_for",return_value=NS(refresh_design_identity=Mock()))):
             p.start()
             self.addCleanup(p.stop)

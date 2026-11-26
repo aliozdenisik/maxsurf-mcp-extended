@@ -33,6 +33,17 @@ _PREFIXES = {
     "msSurfaceType": "msST",
     "msSurfaceUse": "msSU",
     "msVertDatumType": "msVDT",
+    "skTabEnumerationType": "skTab",
+}
+
+# Fallback only. Types whose prefix another enum shares (msMeshType also uses
+# ``msMT``) keep only these members.
+_MEMBERS = {
+    "msMarkerType": (
+        "msMTInternal", "msMTTopEdge", "msMTBottomEdge", "msMTLeftEdge",
+        "msMTRightEdge", "msMTTopRight", "msMTTopLeft", "msMTBottomRight",
+        "msMTBottomLeft",
+    ),
 }
 
 # Type-library members per connected app object; holding the app keeps id() unique.
@@ -40,11 +51,11 @@ _cache: dict[int, tuple[Any, dict[str, dict[str, int]]]] = {}
 
 
 def clear() -> None:
-    """Drop cached members; called by the session reset path."""
+    """Drop cached members; called on session reset and reconnect."""
     _cache.clear()
 
 
-def _type_library(app: Any) -> Any | None:
+def _type_library(app: Any) -> tuple[Any, int] | None:
     try:
         library = app._oleobj_.GetTypeInfo().GetContainingTypeLib()[0]
         count = int(library.GetTypeInfoCount())
@@ -83,7 +94,8 @@ def members(app: Any, enum_type: str) -> dict[str, int]:
     discovered = comconstants.discover(app, name_filter=prefix) if prefix else None
     result = {} if discovered is None else {
         name: int(number) for name, number in discovered["constants"].items()
-        if name.startswith(prefix) and not isinstance(number, bool)}
+        if name.startswith(prefix) and not isinstance(number, bool)
+        and name in _MEMBERS.get(enum_type, (name,))}
     if not result:
         raise MaxsurfValidationError(
             "native enum type unavailable", enum_type=enum_type,
@@ -105,16 +117,23 @@ def resolve(app: Any, enum_type: str, requested: Any,
 
 
 def name_of(app: Any, enum_type: str, value: Any) -> str | None:
-    """Canonical member name for a native value, or None when none matches."""
-    return next((k for k, v in members(app, enum_type).items() if v == value),
-                None)
+    """Canonical member name for a native value, or None when none matches.
+
+    Read paths only: an unavailable enum type also gives None, never a guess.
+    """
+    try:
+        available = members(app, enum_type)
+    except MaxsurfValidationError:
+        return None
+    return next((k for k, v in available.items() if v == value), None)
 
 
 def constant(app: Any, name: str) -> int:
     """One exactly named constant; never prefix-matched."""
-    discovered = comconstants.discover(app, name_filter=name)
-    number = discovered["constants"].get(name)
-    if number is None or isinstance(number, bool):
-        raise MaxsurfValidationError("native constant unavailable",
-                                     constant=name, source=discovered.get("source", "generated_constants"))
+    discovered = comconstants.discover(app, name_filter=name) or {}
+    number = discovered.get("constants", {}).get(name)
+    if not isinstance(number, int) or isinstance(number, bool):
+        raise MaxsurfValidationError(
+            "native constant unavailable", constant=name,
+            source=discovered.get("source", "generated_constants"))
     return int(number)

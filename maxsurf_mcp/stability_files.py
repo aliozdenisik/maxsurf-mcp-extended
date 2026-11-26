@@ -4,12 +4,11 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
-from . import com, workspace
+from . import com, native_enum, workspace
 from . import validation as val
 from .audit import Channel, Classification
 from .errors import MaxsurfCOMError, MaxsurfSafetyError, MaxsurfValidationError
 from .guard import guarded, register
-from .native_enum import constant as _constant
 from .stability import _digest, _loadcase_names
 from .stability_controls import _boolean
 
@@ -42,7 +41,7 @@ def export_stability_results_table(table: str, path: str, overwrite: bool = Fals
     target = workspace.resolve_target(path, purpose="stability_results_table",
                                       overwrite=overwrite, allowed_suffixes=(".txt",))
     app = com.connect("stability")
-    value = _constant(app, table)
+    value = native_enum.constant(app, table)
     # A unique absent destination prevents an old file from proving a no-op
     # export, and avoids native overwrite dialogs (the method has no flag).
     staged = target.with_name(target.stem + "." + uuid4().hex + ".txt")

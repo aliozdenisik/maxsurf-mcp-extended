@@ -859,6 +859,7 @@ class SessionManager:
         fresh.reconnect_count = previous.reconnect_count + 1
         with self._lock:
             self._sessions[fresh.module] = fresh
+        native_enum.clear()
         _record("session_reconnect", Classification.WRITE_STATE,
                 Outcome.SUCCESS, fresh.describe())
         return fresh

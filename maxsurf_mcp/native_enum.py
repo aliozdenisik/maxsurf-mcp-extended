@@ -20,6 +20,8 @@ _PREFIXES = {
     "msAreaProjectionType": "msAPT",
     "msAreaType": "msAT",
     "msDirectionType": "msDT",
+    "msGridType": "msGT",
+    "msLongDatumType": "msLDT",
     "msMarkerType": "msMT",
     "msShapeSymmetryType": "msSST",
     "msSurfaceBondContinuity": "msBond",
@@ -28,6 +30,7 @@ _PREFIXES = {
     "msSurfaceSkinDirection": "msSSD",
     "msSurfaceType": "msST",
     "msSurfaceUse": "msSU",
+    "msVertDatumType": "msVDT",
 }
 
 # Type-library members per connected app object; holding the app keeps id() unique.

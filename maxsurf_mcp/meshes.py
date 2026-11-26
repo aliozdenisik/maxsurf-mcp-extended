@@ -10,12 +10,12 @@ from __future__ import annotations
 import math
 from typing import Any, Literal
 
-from . import com, validation
+from . import com, native_enum, validation
 from .audit import Channel, Classification
 from .errors import MaxsurfValidationError
 from .guard import guarded, register
 from .mesh_common import (
-    PROPERTIES, at, boolean, collection, created, enum, enum_members, integer,
+    PROPERTIES, at, boolean, collection, created, integer,
     new_name, number, require, statistics, summary,
 )
 
@@ -43,7 +43,7 @@ def get_mesh_statistics(index: int) -> str:
 def get_mesh_enums() -> str:
     """READ. Discover actual installed native mesh metadata enums."""
     app, _ = collection()
-    return com.to_json({kind: enum_members(app, kind) for kind in (
+    return com.to_json({kind: native_enum.members(app, kind) for kind in (
         "msMeshType", "msMeshDiagonalLayoutType", "msMeshRepairMethod",
         "msDirectionType", "msSurfaceUse", "msSurfaceSkinDirection")})
 
@@ -63,7 +63,8 @@ def mesh_surface_edge_length(name: str, surface_index: int,
     integer(surface_index, "surface_index",
             maximum=int(app.Design.Surfaces.Count))
     name = new_name(meshes, name)
-    kind = enum(app, "msMeshType", mesh_type)
+    kind = native_enum.resolve(
+        app, "msMeshType", mesh_type, "mesh_type")["value"]
     before = int(meshes.Count)
     meshes.MeshFromSurfaceEdgeLength(name, surface_index, lo, hi, kind,
                                     preserve_feature_lines)
@@ -88,8 +89,10 @@ def mesh_surface_parametric(name: str, surface_index: int,
     integer(surface_index, "surface_index",
             maximum=int(app.Design.Surfaces.Count))
     name = new_name(meshes, name)
-    layout = enum(app, "msMeshDiagonalLayoutType", diagonal_layout)
-    kind = enum(app, "msMeshType", mesh_type)
+    layout = native_enum.resolve(
+        app, "msMeshDiagonalLayoutType", diagonal_layout, "diagonal_layout")["value"]
+    kind = native_enum.resolve(
+        app, "msMeshType", mesh_type, "mesh_type")["value"]
     before = int(meshes.Count)
     meshes.MeshFromSurfaceParametric(name, surface_index, longitudinal_triangles,
                                     transverse_triangles, layout, percent, kind)
@@ -123,7 +126,7 @@ def set_mesh_properties(index: int, properties_json: str) -> str:
         elif kind == "thickness":
             value = number(value, key, minimum=0)
         else:
-            value = enum(app, kind, value)
+            value = native_enum.resolve(app, kind, value, key)["value"]
         prepared[member] = value
     for member, value in prepared.items():
         validation.stored(mesh, member, value)
@@ -231,7 +234,8 @@ def flip_mesh(index: int, direction: str, plane_location: float = 0.0,
     boolean(duplicate, "duplicate")
     location = number(plane_location, "plane_location")
     app, _ = collection()
-    axis = enum(app, "msDirectionType", direction)
+    axis = native_enum.resolve(
+        app, "msDirectionType", direction, "direction")["value"]
     return _transform(index, "Flip", (axis, location, duplicate), duplicate,
                       int(duplicate), area_factor=1)
 
@@ -249,7 +253,8 @@ def invert_mesh_normals(index: int) -> str:
 def repair_mesh(index: int, repair_method: str) -> str:
     """WRITE_GEOMETRY. Fill native mesh holes; require closed result readback."""
     app, meshes = collection()
-    method = enum(app, "msMeshRepairMethod", repair_method)
+    method = native_enum.resolve(
+        app, "msMeshRepairMethod", repair_method, "repair_method")["value"]
     mesh = at(meshes, index)
     before = statistics(mesh)
     identity, count = int(mesh.ID), int(meshes.Count)

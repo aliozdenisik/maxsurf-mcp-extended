@@ -44,7 +44,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-from . import audit, comthread, config, processes
+from . import audit, comthread, config, native_enum, processes
 from .audit import Channel, Classification, Outcome
 from .errors import (
     MaxsurfConnectionError,
@@ -767,6 +767,7 @@ class SessionManager:
                 dropped = sorted(self._sessions)
                 removed = dict(self._sessions)
                 self._sessions.clear()
+            native_enum.clear()
         summary = {
             "dropped": dropped,
             "previous": {name: s.describe() for name, s in removed.items()},

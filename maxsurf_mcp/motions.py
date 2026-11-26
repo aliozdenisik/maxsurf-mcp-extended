@@ -34,7 +34,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from . import audit, com, config, workspace
+from . import audit, com, config, native_enum, workspace
 from . import validation as val
 from .audit import Channel, Classification
 from .errors import (
@@ -536,15 +536,13 @@ def export_motions_table(path: str, table: str, overwrite: bool = False) -> str:
                                       overwrite=overwrite, allowed_suffixes=(".txt",))
     app = com.connect("motions")
     design = _require_ready(app)
-    from . import constants as comconstants
-    catalog = {k: v for k, v in comconstants.discover(app, name_filter="skTab")["constants"].items()
-               if k.startswith("skTab") and isinstance(v, int) and not isinstance(v, bool)}
-    if table not in catalog:
-        raise MaxsurfValidationError("unknown native Motions results table", available=sorted(catalog))
+    if not isinstance(table, str) or not table.startswith("skTab"):
+        raise MaxsurfValidationError("unknown native Motions results table")
+    number = native_enum.constant(app, table)
     target.parent.mkdir(parents=True, exist_ok=True)
     staged = target.with_name(target.stem + "." + uuid4().hex + target.suffix)
     try:
-        result = design.ExportResults(catalog[table], str(staged))
+        result = design.ExportResults(number, str(staged))
         if result is False or not staged.is_file() or staged.stat().st_size == 0:
             raise MaxsurfCOMError("native Motions export did not write a nonempty file", path=str(target))
         data = staged.read_bytes()

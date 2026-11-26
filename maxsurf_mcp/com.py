@@ -99,7 +99,9 @@ def resolve(root: Any, path: str) -> Any:
 
 def to_json(payload: Any) -> str:
     """Serialize an MCP result consistently across application modules."""
-    return json.dumps(payload, ensure_ascii=False, indent=2, default=str,
+    # Compact: results are re-escaped inside the MCP text block, so indentation
+    # roughly doubles the tokens an agent pays per call.
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"), default=str,
                       allow_nan=False)
 
 

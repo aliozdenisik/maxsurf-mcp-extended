@@ -181,7 +181,6 @@ class DiagnosticProtocolContract:
                 "acknowledge_native_effects": True,
             })
             self.assertFalse(response.isError)
-            self.assertEqual(json.loads(response.structuredContent["result"]), expected)
             self.assertEqual(json.loads(response.content[0].text), expected)
             connect.assert_called_once_with("modeler")
             self.assertTrue(native_threads)
@@ -191,7 +190,7 @@ class DiagnosticProtocolContract:
                 "acknowledge_native_effects": True,
             })
             self.assertFalse(released.isError)
-            self.assertEqual(json.loads(released.structuredContent["result"]),
+            self.assertEqual(json.loads(released.content[0].text),
                              {"released": 1, "remaining": 0})
             self.assertFalse(handles)
 

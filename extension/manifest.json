@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "maxsurf-mcp",
   "display_name": "Maxsurf MCP",
-  "version": "0.2.0-rc.5",
+  "version": "0.2.0-rc.6",
   "description": "Local, guarded COM tools for Maxsurf Modeler, Stability, Resistance, Motions and Multiframe.",
   "long_description": "Release candidate. Requires separately installed and licensed Maxsurf and Windows x64 CPython 3.12. Includes MCP source and dependencies, not Bentley software or manuals. Live release acceptance is recorded in docs/RELEASE_STATUS.md. Original project code and assets are MIT licensed. Copyright (c) 2026 Ismail Hakki Celik.",
   "author": {

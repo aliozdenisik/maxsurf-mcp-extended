@@ -1,4 +1,4 @@
-# Release status: 0.2.0-rc.5
+# Release status: 0.2.0-rc.6
 
 Review: 2026-09-08 UTC. **Technical preview, not a fully accepted production release.**
 No GitHub upload, catalogue submission or client-settings change is performed.

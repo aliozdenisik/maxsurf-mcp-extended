@@ -1,6 +1,6 @@
 # Installation guide
 
-This guide covers Maxsurf MCP **0.2.0-rc.5** on Windows. Choose one installation method per client: a packaged extension/plugin, or a source-based MCP connection.
+This guide covers Maxsurf MCP **0.2.0-rc.6** on Windows. Choose one installation method per client: a packaged extension/plugin, or a source-based MCP connection.
 
 The expanded checkout exposes 144 default tools. Use the source setup below or
 locally rebuilt packages for these additions; older downloaded archives retain
@@ -57,14 +57,14 @@ Put your working design copies and exports inside that folder. Existing users ca
 
 | Installation | Release asset |
 | --- | --- |
-| Claude Desktop extension | `maxsurf-mcp-0.2.0-rc.5-win-x64-py312.mcpb` |
-| Codex plugin | `maxsurf-mcp-0.2.0-rc.5-codex-win-x64-py312.zip` |
-| PowerShell/source | `maxsurf-mcp-0.2.0-rc.5-source.zip` |
+| Claude Desktop extension | `maxsurf-mcp-0.2.0-rc.6-win-x64-py312.mcpb` |
+| Codex plugin | `maxsurf-mcp-0.2.0-rc.6-codex-win-x64-py312.zip` |
+| PowerShell/source | `maxsurf-mcp-0.2.0-rc.6-source.zip` |
 
 Download the matching checksum JSON from the same release. Check a downloaded file with:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 -LiteralPath 'C:\Downloads\maxsurf-mcp-0.2.0-rc.5-win-x64-py312.mcpb'
+Get-FileHash -Algorithm SHA256 -LiteralPath 'C:\Downloads\maxsurf-mcp-0.2.0-rc.6-win-x64-py312.mcpb'
 ```
 
 Use the actual download path and compare the hash with that filename's entry in `SHA256SUMS-*.json`. These packages are unsigned; a checksum verifies file integrity, not publisher identity.
@@ -105,7 +105,7 @@ The Codex ZIP is a separate package from the Claude MCPB.
 1. Extract the Codex ZIP to a permanent folder such as `C:\MaxsurfBridge`. With the file in your Downloads folder:
 
 ```powershell
-$maxsurfCodexZip = Join-Path $env:USERPROFILE 'Downloads\maxsurf-mcp-0.2.0-rc.5-codex-win-x64-py312.zip'
+$maxsurfCodexZip = Join-Path $env:USERPROFILE 'Downloads\maxsurf-mcp-0.2.0-rc.6-codex-win-x64-py312.zip'
 Expand-Archive -LiteralPath $maxsurfCodexZip -DestinationPath 'C:\MaxsurfBridge'
 ```
 
@@ -153,7 +153,7 @@ Choose this method if you want to run the source directly. It installs the Pytho
 The example assumes the source ZIP is in Downloads:
 
 ```powershell
-$maxsurfSourceZip = Join-Path $env:USERPROFILE 'Downloads\maxsurf-mcp-0.2.0-rc.5-source.zip'
+$maxsurfSourceZip = Join-Path $env:USERPROFILE 'Downloads\maxsurf-mcp-0.2.0-rc.6-source.zip'
 Expand-Archive -LiteralPath $maxsurfSourceZip -DestinationPath 'C:\MaxsurfSource'
 Set-Location 'C:\MaxsurfSource'
 ```
@@ -184,7 +184,7 @@ Use this alternative only in a fresh source directory. No environment activation
 .\.venv\Scripts\python.exe .\scripts\smoke_stdio.py --python .\.venv\Scripts\python.exe --entry .\server.py
 ```
 
-Expected output includes version `0.2.0-rc.5`, the tool count for this checkout,
+Expected output includes version `0.2.0-rc.6`, the tool count for this checkout,
 `session_status: pass` and `consent_refusal: pass`. The check compares the actual
 protocol schemas with `tests/data/tool_schemas.json`; an old fixed tool count
 does not certify an expanded checkout. **No Bentley application needs to be

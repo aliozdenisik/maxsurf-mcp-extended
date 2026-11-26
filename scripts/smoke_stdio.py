@@ -34,7 +34,7 @@ async def run(python, entry, bundle, plugin_root=None):
                     ("unknown argument refusal", unknown_option, True)):
                 if result.isError != error:
                     raise RuntimeError(f"{label}: expected isError={error}")
-            if init.serverInfo.version != '0.2.0-rc.5':
+            if init.serverInfo.version != '0.2.0-rc.6':
                 raise RuntimeError(f"Unexpected server version: {init.serverInfo.version}")
             expected = json.loads(
                 (Path(__file__).resolve().parents[1] / "tests" / "data"

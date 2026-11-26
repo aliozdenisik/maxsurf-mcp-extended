@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "maxsurf-mcp"
-version = "0.2.0rc5"
+version = "0.2.0rc6"
 description = "MCP server for Bentley Maxsurf COM automation, with audited and sandboxed tools"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"

@@ -1,4 +1,17 @@
-# Verification evidence: 0.2.0-rc.5
+# Verification evidence: 0.2.0-rc.6
+
+## Native enum module live comparison: 2026-11-26
+
+The Native enum change (PR #8) was compared with the previous main branch on a
+live Maxsurf 26.00.00.433 session through the MCP stdio server: Modeler
+(33 read and 55 write calls on a disposable copy), Resistance, Motions,
+Stability and Multiframe, the same calls on both branches. Successful responses
+were identical; the Resistance Holtrop results CSV and a Stability PNG export
+were byte-identical. Validation errors changed only to the uniform shape, and a
+prefix collision in the surface symmetry error was removed. One defect found
+here (Motions unknown-table errors listing refused `skInp*` members) was fixed
+before release. The constants fallback path was not exercised live. These
+checks establish software behaviour, not numerical or engineering acceptance.
 
 ## Current source acceptance: 2026-10-15
 

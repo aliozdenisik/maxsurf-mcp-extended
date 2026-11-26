@@ -21,7 +21,7 @@ for line in sys.stdin:
         result = {{"protocolVersion": request["params"]["protocolVersion"],
                    "capabilities": {{"tools": {{}}}},
                    "serverInfo": {{"name": "stub", "version":
-                       "wrong" if mode == "version" else "0.2.0-rc.5"}}}}
+                       "wrong" if mode == "version" else "0.2.0-rc.6"}}}}
     elif method == "tools/list":
         result = {{"tools": [{{"name": k, "inputSchema": v}}
                            for k, v in schemas.items()] if mode != "schema" else []}}

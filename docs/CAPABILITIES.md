@@ -1,6 +1,6 @@
 # Capability and acceptance matrix
 
-This expanded 0.2.0-rc.5 source exposes **144 default tools**, plus seven diagnostic
+This expanded 0.2.0-rc.6 source exposes **144 default tools**, plus seven diagnostic
 tools when explicitly enabled. Tool count is not a percentage of Maxsurf
 coverage. Installed native contracts are exhaustively discoverable and callable
 through the validated extension where their Automation representation and

@@ -1,5 +1,16 @@
 # Changelog
 
-No public GitHub releases have been published yet.
+## 0.2.0-rc.6 (pre-release, 2026-11-26)
 
-Public release entries will be added here after the first publication. The current build and its verification limits are documented in [Release status](docs/RELEASE_STATUS.md).
+First public GitHub release. The package, requirements and verification limits are described in the [release notes](docs/RELEASE_NOTES_0.2.0-rc.6.md) and [Release status](docs/RELEASE_STATUS.md).
+
+### Changed
+
+- One Native enum module (`maxsurf_mcp/native_enum.py`) now resolves every Maxsurf enum name and number for all tools, keyed by the manuals' enum type names, with numbers taken from the live type library ([#1](https://github.com/aliozdenisik/maxsurf-mcp-extended/issues/1), [PR #8](https://github.com/aliozdenisik/maxsurf-mcp-extended/pull/8)).
+- Unknown enum members return one error shape (`field`, `requested`, `enum_type`, `available`) from every tool; `available` lists only that type's members.
+- Enum member names are matched case-insensitively and trimmed.
+
+### Fixed
+
+- Prefix collisions between enum types no longer leak unrelated members into errors or results.
+- Unknown Motions results-table errors list only exportable `skTab` tables.

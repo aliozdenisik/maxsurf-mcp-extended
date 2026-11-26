@@ -162,4 +162,4 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertTrue(tool.annotations.destructiveHint)
 
     def test_wire_server_version_is_project_version(self):
-        self.assertEqual(server.mcp._mcp_server.version,'0.2.0-rc.5')
+        self.assertEqual(server.mcp._mcp_server.version,'0.2.0-rc.6')

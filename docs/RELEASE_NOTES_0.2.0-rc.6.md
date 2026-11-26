@@ -1,4 +1,4 @@
-# Maxsurf MCP 0.2.0-rc.5
+# Maxsurf MCP 0.2.0-rc.6
 
 First public release candidate for connecting Codex and Claude Desktop to locally installed Bentley Maxsurf applications.
 
@@ -8,13 +8,24 @@ First public release candidate for connecting Codex and Claude Desktop to locall
 
 | Client or method | Asset | Instructions |
 | --- | --- | --- |
-| Claude Desktop extension | `maxsurf-mcp-0.2.0-rc.5-win-x64-py312.mcpb` | [Claude setup](INSTALL.md#claude-desktop-extension) |
-| Codex plugin | `maxsurf-mcp-0.2.0-rc.5-codex-win-x64-py312.zip` | [Codex setup](INSTALL.md#codex-plugin) |
-| Source through PowerShell | `maxsurf-mcp-0.2.0-rc.5-source.zip` | [Source installation](INSTALL.md#powershell-source-installation) |
+| Claude Desktop extension | `maxsurf-mcp-0.2.0-rc.6-win-x64-py312.mcpb` | [Claude setup](INSTALL.md#claude-desktop-extension) |
+| Codex plugin | `maxsurf-mcp-0.2.0-rc.6-codex-win-x64-py312.zip` | [Codex setup](INSTALL.md#codex-plugin) |
+| Source through PowerShell | `maxsurf-mcp-0.2.0-rc.6-source.zip` | [Source installation](INSTALL.md#powershell-source-installation) |
 
 Windows x64, CPython 3.12 x64 and separately licensed Bentley applications are required. The extension/plugin bundles include Python dependencies; Python and Bentley software are installed separately.
 
 For Claude, select the MCPB during installation, then select `python.exe` and a design workspace in Configure. For Codex, extract the dedicated Codex ZIP and register its local marketplace. Open only the Bentley module required for the task.
+
+## Native enum resolution
+
+Every tool that takes or reports a Maxsurf enumerated value now resolves it through one module, keyed by the enum type names used in the Maxsurf automation manuals (`msSurfaceType`, `msMarkerType`, `hsMethodType`, …). Numbers come from the live type library; the generated constants are used only when the type library cannot be read.
+
+- Member names are matched case-insensitively and trimmed.
+- An unknown member returns one error shape from every tool: `field`, `requested`, `enum_type` and a sorted `available` list for that type only.
+- Prefix collisions no longer leak unrelated members into `available` (for example, stringer stiffness members no longer appear in the surface `symmetry` error).
+- Successful tool output and the tool schema are unchanged.
+
+Checked against live Maxsurf 26.00.00.433 in Modeler, Stability, Resistance, Motions and Multiframe; see [Verification](VERIFICATION.md).
 
 ## Verification and limitations
 

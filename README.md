@@ -10,7 +10,7 @@ The MCP lets an assistant inspect models, set supported analysis inputs and requ
 
 This repository builds on [Maxsurf MCP](https://github.com/ishakkicelik/maxsurf-mcp), originally created by Ismail Hakki Celik and released under the [MIT License](LICENSE). Ali Özden Işık extended the project with native geometry and analysis workflows, installed API discovery, and 144 default MCP tools. The original contribution is documented in [upstream pull request #1](https://github.com/ishakkicelik/maxsurf-mcp/pull/1).
 
-**Expanded source: 0.2.0-rc.5 · 144 default tools · technical preview.**
+**Expanded source: 0.2.0-rc.6 · 144 default tools · technical preview.**
 The checkout adds native geometry formats, meshes and linked surfaces, analysis
 controls, exhaustive installed API discovery, and an opt-in metadata-validated
 automation extension. Older published archives retain their original contents.
@@ -36,9 +36,9 @@ Maxsurf, Python and client subscriptions/licenses are separate from this package
 
 | You want to use | Download | Setup |
 | --- | --- | --- |
-| Claude Desktop extension | `maxsurf-mcp-0.2.0-rc.5-win-x64-py312.mcpb` | [Install the extension](docs/INSTALL.md#claude-desktop-extension) |
-| Codex plugin | `maxsurf-mcp-0.2.0-rc.5-codex-win-x64-py312.zip` | [Install the Codex plugin](docs/INSTALL.md#codex-plugin) |
-| Source code through PowerShell | `maxsurf-mcp-0.2.0-rc.5-source.zip` | [Install from source](docs/INSTALL.md#powershell-source-installation) |
+| Claude Desktop extension | `maxsurf-mcp-0.2.0-rc.6-win-x64-py312.mcpb` | [Install the extension](docs/INSTALL.md#claude-desktop-extension) |
+| Codex plugin | `maxsurf-mcp-0.2.0-rc.6-codex-win-x64-py312.zip` | [Install the Codex plugin](docs/INSTALL.md#codex-plugin) |
+| Source code through PowerShell | `maxsurf-mcp-0.2.0-rc.6-source.zip` | [Install from source](docs/INSTALL.md#powershell-source-installation) |
 
 The Claude and Codex bundles include the server's Python dependencies. They still require Python itself. The source installation creates a virtual environment and downloads dependencies.
 

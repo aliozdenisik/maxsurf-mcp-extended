@@ -71,7 +71,7 @@ class ResistanceTests(unittest.TestCase):
         app = self.app(initialized=True, loaded=True)
         app.Design.Methods.selected.add(5)
         app.Design.ResistanceResults.Velocity = lambda index: 6.0 + index
-        with patch.object(resistance.comconstants, "discover",
+        with patch("maxsurf_mcp.constants.discover",
                           side_effect=self.discovery):
             with self.assertRaises(MaxsurfAnalysisError):
                 resistance._read_results(app, app.Design, 500)
@@ -123,7 +123,7 @@ class ResistanceTests(unittest.TestCase):
     def test_status_exposes_initialization_and_both_speed_units(self):
         app = self.app()
         with patch.object(resistance.com, "connect", return_value=app), \
-             patch.object(resistance.comconstants, "discover",
+             patch("maxsurf_mcp.constants.discover",
                           side_effect=self.discovery):
             payload = json.loads(resistance.get_resistance_status())
 
@@ -136,7 +136,7 @@ class ResistanceTests(unittest.TestCase):
     def test_initialized_session_exposes_analysis_workflow(self):
         app = self.app(initialized=True, loaded=True)
         with patch.object(resistance.com, "connect", return_value=app), \
-             patch.object(resistance.comconstants, "discover",
+             patch("maxsurf_mcp.constants.discover",
                           side_effect=self.discovery):
             payload = json.loads(resistance.get_resistance_status())
 
@@ -148,7 +148,7 @@ class ResistanceTests(unittest.TestCase):
     def test_configuration_converts_knots_and_selects_named_methods(self):
         app = self.app(initialized=True, loaded=True)
         with patch.object(resistance.com, "connect", return_value=app), \
-             patch.object(resistance.comconstants, "discover",
+             patch("maxsurf_mcp.constants.discover",
                           side_effect=self.discovery):
             payload = json.loads(resistance.configure_resistance_analysis(
                 8.0, 30.0, '["hsMTHoltrop", "hsMTSlenderBody"]'))
@@ -165,7 +165,7 @@ class ResistanceTests(unittest.TestCase):
         app = self.app(initialized=True, loaded=True)
         app.Design.Methods.selected.add(5)
         with patch.object(resistance.com, "connect", return_value=app), \
-             patch.object(resistance.comconstants, "discover",
+             patch("maxsurf_mcp.constants.discover",
                           side_effect=self.discovery):
             payload = json.loads(resistance.run_resistance_analysis(1025.0, 1.19e-6, 0.0004, 65.0))
 
@@ -199,7 +199,7 @@ class ResistanceTests(unittest.TestCase):
         app = self.app(initialized=True, loaded=True)
         app.Design.Methods.selected.add(5)
         with patch.object(resistance.com, "connect", return_value=app), \
-             patch.object(resistance.comconstants, "discover",
+             patch("maxsurf_mcp.constants.discover",
                           side_effect=self.discovery):
             payload = json.loads(resistance.run_resistance_analysis(
                 1025.0, 1.19e-6, 0.0004, propulsive_efficiency_percent=100.0))
@@ -214,7 +214,7 @@ class ResistanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "curve.csv"
             with patch.object(resistance.com, "connect", return_value=app), \
-                 patch.object(resistance.comconstants, "discover",
+                 patch("maxsurf_mcp.constants.discover",
                               side_effect=self.discovery), \
                  patch.object(resistance.workspace, "resolve_target",
                               return_value=target):

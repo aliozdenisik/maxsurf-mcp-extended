@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import com, constants, validation as val
+from . import com, native_enum, validation as val
 from .audit import Channel, Classification
 from .errors import MaxsurfCOMError, MaxsurfValidationError
 from .guard import guarded, register
@@ -20,14 +20,10 @@ def _integer(value: Any, field: str, maximum: int = 2147483647) -> int:
     return value
 
 
-def _enum(app: Any, name: str, allowed: tuple[str, ...]) -> int:
+def _allowed(app: Any, name: str, allowed: tuple[str, ...]) -> int:
     if not isinstance(name, str) or name not in allowed:
         raise MaxsurfValidationError("unknown native formulation", available=allowed)
-    catalog = constants.discover(app)["constants"]
-    value = catalog.get(name)
-    if type(value) is not int:
-        raise MaxsurfValidationError("native enum is unavailable", enum=name)
-    return value
+    return native_enum.constant(app, name)
 
 
 @guarded(classification=Classification.WRITE_STATE, module="motions", channel=Channel.MCP_COM)
@@ -68,11 +64,11 @@ def set_motions_formulation(use_transom_terms: bool, wave_force_method: str,
     if type(use_transom_terms) is not bool:
         raise MaxsurfValidationError("use_transom_terms must be a boolean")
     app = com.connect("motions")
-    wave = _enum(app, wave_force_method,
-                 ("skWFArbitraryWaveHeading", "skWFHeadSeasApproximation"))
-    resistance = _enum(app, added_resistance_method,
-                       ("skARSalvesen", "skARGerritsmaBeukelmanI",
-                        "skARGerritsmaBeukelmanII", "skARHavelock"))
+    wave = _allowed(app, wave_force_method,
+                    ("skWFArbitraryWaveHeading", "skWFHeadSeasApproximation"))
+    resistance = _allowed(app, added_resistance_method,
+                          ("skARSalvesen", "skARGerritsmaBeukelmanI",
+                           "skARGerritsmaBeukelmanII", "skARHavelock"))
     options = _require_ready(app).AnalysisOptions
     try:
         stored = {field: val.stored(options, field, value) for field, value in (

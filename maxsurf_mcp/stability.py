@@ -29,7 +29,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-from . import audit, com, config, workspace
+from . import audit, com, config, native_enum, workspace
 from . import validation as val
 from .errors import MaxsurfSafetyError
 from .audit import Channel, Classification
@@ -97,21 +97,6 @@ EQ_UNITS = {
 }
 
 
-def _constant(app: Any, name: str) -> int:
-    """Resolve one generated constant, refusing rather than guessing a number."""
-    from . import constants as comconstants
-
-    discovered = comconstants.discover(app, name_filter=name)
-    value = discovered["constants"].get(name)
-    if not isinstance(value, int) or isinstance(value, bool):
-        raise MaxsurfValidationError(
-            f"the {name} constant could not be resolved from the generated "
-            f"type library",
-            constant=name, source=discovered.get("source"),
-        )
-    return int(value)
-
-
 def _digest(path: Any) -> dict[str, Any]:
     data = path.read_bytes()
     return {"bytes": len(data),
@@ -160,12 +145,12 @@ def run_stability_equilibrium(loadcase_name: str, mass: float | None = None,
             raise MaxsurfSafetyError("refusing to overwrite existing loadcase")
         if int(design.Tanks.Count):
             raise MaxsurfValidationError("use define_loadcase with explicit tank fills")
-        design.LoadCases.Add(loadcase_name,_constant(app,LOADCASE_TYPE_NAME))
+        design.LoadCases.Add(loadcase_name,native_enum.constant(app,LOADCASE_TYPE_NAME))
         val.stored(design,"ActiveLoadCaseByName",loadcase_name)
         design.LoadCases(int(design.ActiveLoadCase)).AddMassItem(
             loadcase_name+" total",1,mass,*xyz,0,0,0)
     _select_case(design,loadcase_name,"")
-    val.stored(design,"ActiveAnalysisMode",_constant(app,EQUILIBRIUM_MODE_NAME))
+    val.stored(design,"ActiveAnalysisMode",native_enum.constant(app,EQUILIBRIUM_MODE_NAME))
     try:
         design.RunAnalysis()
         count=int(design.EquilibriumResults.Count)
@@ -240,8 +225,8 @@ def define_subdivision(rooms_json: str, clear_first: bool = False,
     design = app.Design
     for row in validated:
         if row.get("fluid"):
-            row["fluid_value"] = _constant(app, val.name(row["fluid"], "fluid"))
-        row["type_value"] = _constant(app, {
+            row["fluid_value"] = native_enum.constant(app, val.name(row["fluid"], "fluid"))
+        row["type_value"] = native_enum.constant(app, {
             "tank": "hmCTTank", "compartment": "hmCTCompartment",
             "non_buoyant": "hmCTNBV",
         }[row["kind"]])
@@ -296,7 +281,7 @@ def set_heel_range(start: float, first_end: float, first_step: float,
     schedule=_validated_schedule(dict(start=start,first_end=first_end,first_step=first_step,
         second_end=second_end,second_step=second_step,third_end=third_end,third_step=third_step))
     app=com.connect("stability")
-    val.stored(app.Design,"ActiveAnalysisMode",_constant(app,STABILITY_MODE_NAME))
+    val.stored(app.Design,"ActiveAnalysisMode",native_enum.constant(app,STABILITY_MODE_NAME))
     _set_stability_heel(app.Design,schedule,to_starboard)
     return com.to_json({"heel_schedule":schedule,"to_starboard":to_starboard,"verified":True})
 
@@ -426,7 +411,7 @@ def define_loadcase(name: str, tank_fills_json: str, mass_items_json: str,
     try:
         if exists:
             design.LoadCases.RemoveByName(case_name)
-        design.LoadCases.Add(case_name,_constant(com.connect("stability"),LOADCASE_TYPE_NAME))
+        design.LoadCases.Add(case_name,native_enum.constant(com.connect("stability"),LOADCASE_TYPE_NAME))
         val.stored(design,"ActiveLoadCaseByName",case_name)
         lc=design.LoadCases(int(design.ActiveLoadCase))
         for tank,pct in fills.items():
@@ -508,7 +493,7 @@ def add_downflooding_points(points_json: str, clear_first: bool = False,
         raise MaxsurfValidationError("points_json must not be empty")
     app=com.connect("stability")
     design=app.Design
-    values={p[-1]:_constant(app,KEYPOINT_KINDS[p[-1]]) for p in planned}
+    values={p[-1]:native_enum.constant(app,KEYPOINT_KINDS[p[-1]]) for p in planned}
     from .stability_controls import _verify
     existing = {str(design.KeyPoints.Item(i).Name)
                 for i in range(1, int(design.KeyPoints.Count) + 1)}
@@ -548,7 +533,7 @@ def run_stability_gz(loadcase_name: str, start: float, first_end: float,
     app=com.connect("stability")
     design=app.Design
     _select_case(design,loadcase_name,damage_case)
-    val.stored(design,"ActiveAnalysisMode",_constant(app,STABILITY_MODE_NAME))
+    val.stored(design,"ActiveAnalysisMode",native_enum.constant(app,STABILITY_MODE_NAME))
     _set_stability_heel(design,schedule,to_starboard)
     try:
         design.RunAnalysis()
@@ -652,7 +637,7 @@ def evaluate_stability_criteria(standard: str, loadcase_name: str,
     app=com.connect("stability")
     design=app.Design
     _select_case(design,loadcase_name,damage_case)
-    val.stored(design,"ActiveAnalysisMode",_constant(app,STABILITY_MODE_NAME))
+    val.stored(design,"ActiveAnalysisMode",native_enum.constant(app,STABILITY_MODE_NAME))
     _set_stability_heel(design,schedule,to_starboard)
     criteria=design.Criteria
     criteria.DeleteAll()
@@ -677,7 +662,7 @@ def evaluate_stability_criteria(standard: str, loadcase_name: str,
             tally[{1:"pass",2:"fail",3:"not_analysed",4:"invalid"}.get(int(item.Status),"unknown")]+=1
     success=_criteria_success(criteria.AnalysisSuccessful(""))
     try:
-        table=_read_xmlgrid_table(_constant(app,"hmResultCriteria"))
+        table=_read_xmlgrid_table(native_enum.constant(app,"hmResultCriteria"))
     except Exception as exc:
         table={"unavailable":str(exc)[:200]}
     complete=(success is True and sum(tally.values())==included and
@@ -818,15 +803,12 @@ def export_stability_image(path: str, view: str = "hmViewPerspective",
     target = workspace.resolve_target(path, purpose="export_stability_image", overwrite=False,
                                       allowed_suffixes=(".png",))
     app = com.connect("stability")
-    from . import constants as comconstants
-    views = {k:v for k,v in comconstants.discover(app,name_filter="hmView")["constants"].items()
-             if k.startswith("hmView") and type(v) is int}
-    if view not in views:
-        raise MaxsurfValidationError("unknown native Stability view", available=sorted(views))
+    resolved = native_enum.resolve(app, "hmVtype", view, "view")
+    view, view_value = resolved["enum_name"], resolved["value"]
     identity = com.probe(app.Design, "Path")
     if identity["status"] != "read" or not identity["value"]:
         raise MaxsurfValidationError("Stability has no verified loaded design; open a model before exporting a view")
-    result = app.Design.SaveImage(views[view], str(target), width, height)
+    result = app.Design.SaveImage(view_value, str(target), width, height)
     if result is False or not target.is_file() or target.stat().st_size == 0:
         raise MaxsurfCOMError("Stability did not write a nonempty image", path=str(target))
     from PIL import Image

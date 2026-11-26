@@ -30,7 +30,7 @@ class ExtrasTests(SurfaceTestCase):
         }}
         with mock.patch.object(extras.com, "connect", return_value=types.SimpleNamespace(
             Design=types.SimpleNamespace(Surfaces=_FakeSurfaces([surface]))
-        )), mock.patch("maxsurf_mcp.surfaces.comconstants.discover",
+        )), mock.patch("maxsurf_mcp.constants.discover",
                       return_value=constants):
             payload = json.loads(extras.get_surface_area_properties(
                 1, "msATBelowDWL", "msAPT2DLateralProjectedArea"))

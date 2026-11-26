@@ -21,8 +21,7 @@ import json
 import math
 from typing import Any
 
-from . import com
-from . import constants as comconstants
+from . import com, native_enum
 from .audit import Channel, Classification
 from .errors import MaxsurfCOMError, MaxsurfSafetyError, MaxsurfValidationError
 from .guard import guarded, register
@@ -53,21 +52,6 @@ MARKER_PROPERTIES: dict[str, tuple[str, str]] = {
     "surface_id": ("SurfaceID", "int"),
     "type": ("Type", "enum"),
 }
-
-# ``msMT`` is reused by the type library for both msMarkerType and msMeshType.
-# Keep the marker enum explicit so mesh members such as msMTTriIso cannot be
-# accepted as marker types or overwrite the reverse lookup for values 1..3.
-MARKER_TYPE_NAMES = (
-    "msMTInternal",
-    "msMTTopEdge",
-    "msMTBottomEdge",
-    "msMTLeftEdge",
-    "msMTRightEdge",
-    "msMTTopRight",
-    "msMTTopLeft",
-    "msMTBottomRight",
-    "msMTBottomLeft",
-)
 
 
 def _finite(field: str, value: Any) -> float:
@@ -100,52 +84,6 @@ def _integer(field: str, value: Any, *, minimum: int | None = None) -> int:
     return int(value)
 
 
-def _enum_members(app: Any, prefix: str) -> dict[str, int]:
-    discovered = comconstants.discover(app, name_filter=prefix)
-    return {
-        name: int(value)
-        for name, value in discovered.get("constants", {}).items()
-        if name.startswith(prefix)
-        and isinstance(value, int)
-        and not isinstance(value, bool)
-    }
-
-
-def _resolve_enum(app: Any, prefix: str, requested: str,
-                  field: str) -> dict[str, Any]:
-    if not isinstance(requested, str) or not requested.strip():
-        raise MaxsurfValidationError(
-            f"{field} must be a non-empty enum name", field=field
-        )
-    members = _enum_members(app, prefix)
-    key = requested.strip().casefold()
-    canonical = next((name for name in members if name.casefold() == key), None)
-    if canonical is None:
-        raise MaxsurfValidationError(
-            f"unknown {field}", field=field, requested=requested,
-            available=sorted(members),
-        )
-    return {"enum_name": canonical, "value": members[canonical]}
-
-
-def _marker_type_members(app: Any) -> dict[str, int]:
-    discovered = _enum_members(app, "msMT")
-    return {name: discovered[name] for name in MARKER_TYPE_NAMES
-            if name in discovered}
-
-
-def _resolve_marker_type(app: Any, requested: str) -> int:
-    members = _marker_type_members(app)
-    canonical = next((name for name in members
-                      if name.casefold() == requested.strip().casefold()), None)
-    if canonical is None:
-        raise MaxsurfValidationError(
-            "unknown marker type", field="type", requested=requested,
-            available=sorted(members),
-        )
-    return members[canonical]
-
-
 def _grid_request(app: Any, requested: str) -> dict[str, Any]:
     if not isinstance(requested, str) or not requested.strip():
         raise MaxsurfValidationError(
@@ -170,7 +108,8 @@ def _grid_request(app: Any, requested: str) -> dict[str, Any]:
             "unknown grid_type", requested=requested,
             available=sorted(GRID_TYPES),
         )
-    resolved = _resolve_enum(app, "msGT", GRID_TYPES[canonical], "grid_type")
+    resolved = native_enum.resolve(app, "msGridType", GRID_TYPES[canonical],
+                                   "grid_type")
     return {"name": canonical, **resolved}
 
 
@@ -592,8 +531,6 @@ def set_section_split(index: int, expected_before: int) -> str:
 
 def _read_marker(app: Any, marker: Any, index: int,
                  *, read_surface_error: bool) -> dict[str, Any]:
-    marker_types = _marker_type_members(app)
-    reverse_types = {value: name for name, value in marker_types.items()}
     output: dict[str, Any] = {"collection_index": index}
     fields = {
         "index": ("Index", int), "name": ("Name", str),
@@ -608,7 +545,8 @@ def _read_marker(app: Any, marker: Any, index: int,
         else:
             output[key] = None
             output[f"{key}_status"] = probed["status"]
-    output["type_enum_name"] = reverse_types.get(output.get("type"))
+    output["type_enum_name"] = native_enum.name_of(
+        app, "msMarkerType", output.get("type"))
     output["coordinate_unit"] = "m"
 
     if read_surface_error:
@@ -721,7 +659,7 @@ def _marker_value(app: Any, field: str, value: Any) -> Any:
         return _finite(field, value)
     if kind == "int":
         return _integer(field, value, minimum=0)
-    return _resolve_marker_type(app, str(value))
+    return native_enum.resolve(app, "msMarkerType", value, field)["value"]
 
 
 @guarded(classification=Classification.WRITE_GEOMETRY, module="modeler_data",

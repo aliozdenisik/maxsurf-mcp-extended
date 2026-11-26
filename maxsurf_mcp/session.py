@@ -44,7 +44,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-from . import audit, comthread, config, processes
+from . import audit, comthread, config, native_enum, processes
 from .audit import Channel, Classification, Outcome
 from .errors import (
     MaxsurfConnectionError,
@@ -767,6 +767,7 @@ class SessionManager:
                 dropped = sorted(self._sessions)
                 removed = dict(self._sessions)
                 self._sessions.clear()
+            native_enum.clear()
         summary = {
             "dropped": dropped,
             "previous": {name: s.describe() for name, s in removed.items()},
@@ -858,6 +859,7 @@ class SessionManager:
         fresh.reconnect_count = previous.reconnect_count + 1
         with self._lock:
             self._sessions[fresh.module] = fresh
+        native_enum.clear()
         _record("session_reconnect", Classification.WRITE_STATE,
                 Outcome.SUCCESS, fresh.describe())
         return fresh

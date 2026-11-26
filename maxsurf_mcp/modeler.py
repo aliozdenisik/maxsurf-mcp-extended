@@ -13,8 +13,7 @@ import math
 import os
 from typing import Any
 
-from . import audit, com, workspace
-from . import constants as comconstants
+from . import audit, com, native_enum, workspace
 from .audit import Channel, Classification
 from .errors import MaxsurfCOMError, MaxsurfSafetyError, MaxsurfValidationError
 from .guard import guarded, register
@@ -106,15 +105,6 @@ def _verify_control_point(surface: Any, row: int, column: int,
     return after
 
 
-def _enum_name(app: Any, prefix: str, value: Any) -> str | None:
-    """Resolve an enum value through generated COM constants at runtime."""
-    discovered = comconstants.discover(app, name_filter=prefix)
-    for name, number in discovered["constants"].items():
-        if name.startswith(prefix) and number == value:
-            return name
-    return None
-
-
 def _surface_summary_payload(app: Any, surface: Any, index: int) -> dict[str, Any]:
     rows, columns = _control_point_limits(surface)
     surface_type = surface.Type
@@ -124,11 +114,11 @@ def _surface_summary_payload(app: Any, surface: Any, index: int) -> dict[str, An
         "name": surface.Name,
         "type": {
             "value": surface_type,
-            "enum_name": _enum_name(app, "msST", surface_type),
+            "enum_name": native_enum.name_of(app, "msSurfaceType", surface_type),
         },
         "use": {
             "value": surface_use,
-            "enum_name": _enum_name(app, "msSU", surface_use),
+            "enum_name": native_enum.name_of(app, "msSurfaceUse", surface_use),
         },
         "symmetrical": bool(surface.Symmetrical),
         "visible": bool(surface.Visible),
@@ -366,12 +356,7 @@ def create_library_surface(shape: str, name: str | None = None) -> str:
 
     app = com.connect("modeler")
     surfaces = app.Design.Surfaces
-    discovered = comconstants.discover(app, name_filter="msSL")
-    library = {
-        enum_name: number
-        for enum_name, number in discovered["constants"].items()
-        if enum_name.startswith("msSL")
-    }
+    library = native_enum.members(app, "msSurfaceLibrary")
     canonical = next(
         (enum_name for enum_name in library
          if enum_name.casefold() == shape.strip().casefold()),

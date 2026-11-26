@@ -9,8 +9,6 @@ from __future__ import annotations
 import math
 from typing import Any
 
-import pythoncom
-
 from . import com, validation
 from .errors import MaxsurfCOMError, MaxsurfValidationError
 
@@ -51,31 +49,6 @@ def number(value: Any, field: str, **bounds: Any) -> float:
     if type(value) not in (int, float):
         raise MaxsurfValidationError("expected finite number", field=field)
     return validation.number(value, field, **bounds)
-
-
-def enum_members(app: Any, enum_type: str) -> dict[str, int]:
-    """Resolve the actual enum type, not a coincidentally matching prefix."""
-    library = app._oleobj_.GetTypeInfo().GetContainingTypeLib()[0]
-    for i in range(library.GetTypeInfoCount()):
-        ti = library.GetTypeInfo(i)
-        if ti.GetDocumentation(-1)[0] == enum_type:
-            attr = ti.GetTypeAttr()
-            if attr.typekind != pythoncom.TKIND_ENUM:
-                break
-            return {ti.GetNames(v.memid)[0]: int(v.value)
-                    for v in (ti.GetVarDesc(j) for j in range(attr.cVars))}
-    raise MaxsurfCOMError("native enum type unavailable", enum_type=enum_type)
-
-
-def enum(app: Any, enum_type: str, value: str) -> int:
-    value = validation.name(value, enum_type)
-    members = enum_members(app, enum_type)
-    key = next((k for k in members if k.casefold() == value.casefold()), None)
-    if key is None:
-        raise MaxsurfValidationError("unknown native enum member",
-                                     enum_type=enum_type, requested=value,
-                                     available=sorted(members))
-    return members[key]
 
 
 def collection() -> tuple[Any, Any]:

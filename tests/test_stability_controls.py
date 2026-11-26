@@ -31,7 +31,7 @@ class PolicyTests(unittest.TestCase):
                              ("lcg", "TrimToLCGValue"), ("loadcase", None)):
             trim = NS()
             with self.subTest(mode=mode), patch.object(com, "connect", return_value=NS(Design=NS(Trim=trim))), \
-                    patch.object(controls, "_constant", return_value=9) as constant:
+                    patch("maxsurf_mcp.native_enum.constant", return_value=9) as constant:
                 result = json.loads(controls.set_stability_trim.__wrapped__(
                     mode, -1.25 if member else None))
             self.assertEqual(trim.TrimMode, 9)
@@ -51,7 +51,7 @@ class PolicyTests(unittest.TestCase):
     def test_fluid_policy_resolves_constant(self):
         fluids = NS()
         with patch.object(com, "connect", return_value=NS(Design=NS(Fluids=fluids))), \
-                patch.object(controls, "_constant", return_value=21) as constant:
+                patch("maxsurf_mcp.native_enum.constant", return_value=21) as constant:
             controls.set_stability_fluid_mode.__wrapped__("simulated_movement")
         self.assertEqual(fluids.FluidMode, 21)
         self.assertEqual(constant.call_args.args[1], "hmFMSimulatedFluidMovement")
@@ -67,7 +67,7 @@ class PolicyTests(unittest.TestCase):
         native = NS(SetSpecificGravity=Mock(side_effect=lambda k, v: values.update({k: v})),
                     SpecificGravity=lambda k: values[k])
         with patch.object(com, "connect", return_value=NS(Design=NS(Density=native))), \
-                patch.object(controls, "_constant", return_value=1):
+                patch("maxsurf_mcp.native_enum.constant", return_value=1):
             result = json.loads(controls.set_stability_density.__wrapped__("hmFSeaWater", 1025))
         native.SetSpecificGravity.assert_called_once_with(1, 1.025)
         self.assertEqual(result["density_kg_m3"], 1025)
@@ -75,7 +75,7 @@ class PolicyTests(unittest.TestCase):
     def test_density_refused_write_is_not_verified(self):
         native = NS(SetSpecificGravity=Mock(), SpecificGravity=lambda k: 1)
         with patch.object(com, "connect", return_value=NS(Design=NS(Density=native))), \
-                patch.object(controls, "_constant", return_value=1), self.assertRaises(MaxsurfCOMError):
+                patch("maxsurf_mcp.native_enum.constant", return_value=1), self.assertRaises(MaxsurfCOMError):
             controls.set_stability_density.__wrapped__("hmFSeaWater", 1025)
 
     def test_density_invalid_inputs_precede_connection(self):
@@ -95,7 +95,7 @@ class PolicyTests(unittest.TestCase):
             def FixedTrimValue(self, value):
                 pass
         with patch.object(com, "connect", return_value=NS(Design=NS(Trim=Trim()))), \
-                patch.object(controls, "_constant", return_value=1), self.assertRaises(MaxsurfCOMError):
+                patch("maxsurf_mcp.native_enum.constant", return_value=1), self.assertRaises(MaxsurfCOMError):
             controls.set_stability_trim.__wrapped__("fixed", 2)
 
     def test_guard_normalizes_native_connection_errors_for_every_control(self):
@@ -127,7 +127,7 @@ class ConditionalTests(unittest.TestCase):
 
     def run_points(self, design, rows):
         with patch.object(com, "connect", return_value=NS(Design=design)), \
-                patch.object(controls, "_constant", return_value=7):
+                patch("maxsurf_mcp.native_enum.constant", return_value=7):
             return json.loads(controls.define_conditional_keypoints.__wrapped__(json.dumps(rows)))
 
     def test_coordinates_links_and_every_policy_are_read_back(self):

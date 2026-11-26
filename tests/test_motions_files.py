@@ -37,7 +37,7 @@ class FilesTests(unittest.TestCase):
                          ExportResults=Mock(side_effect=lambda table,path:export(path)))
         for p in (patch.object(files.com,"connect"),
                   patch.object(files,"_require_ready",return_value=self.design),
-                  patch.object(files.constants,"discover",return_value={"constants":{"skTabGlobalRAOs":7}}),
+                  patch("maxsurf_mcp.constants.discover",return_value={"constants":{"skTabGlobalRAOs":7}}),
                   patch.object(files.com,"session_for",return_value=NS(refresh_design_identity=Mock()))):
             p.start()
             self.addCleanup(p.stop)
@@ -68,6 +68,16 @@ class FilesTests(unittest.TestCase):
             files.export_motions_condition_table.__wrapped__(
                 str(self.path),"skATStripTheory",1,1,1)
         self.assertEqual(self.calls,[])
+
+    def test_unknown_table_lists_only_exportable_tables(self):
+        # Live skTabEnumerationType also holds skInp* members, which the table guard refuses.
+        with patch("maxsurf_mcp.native_enum.members",
+                   return_value={"skTabGlobalRAOs":7,"skInpHeadings":1}), \
+             self.assertRaises(MaxsurfValidationError) as caught:
+            files.export_motions_condition_table.__wrapped__(
+                str(self.path),"skTabBogus",1,1,1)
+        self.assertEqual(caught.exception.details["available"],["skTabGlobalRAOs"])
+        self.assertEqual(caught.exception.details["requested"],"skTabBogus")
 
     def test_optional_axes_use_methods_and_native_counts(self):
         files.export_motions_condition_table.__wrapped__(

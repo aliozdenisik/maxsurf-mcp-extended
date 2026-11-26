@@ -8,11 +8,11 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
-from . import com, constants, workspace
+from . import com, workspace
 from .audit import Channel, Classification
 from .errors import MaxsurfCOMError, MaxsurfSafetyError, MaxsurfValidationError
 from .guard import guarded, register
-from .motions import _digest, _require_numeric_table, _require_ready
+from .motions import _digest, _require_numeric_table, _require_ready, _results_table
 from .motions_controls import _integer
 
 
@@ -100,14 +100,12 @@ def export_motions_condition_table(path: str, table: str, speed_index: int,
     target = workspace.resolve_target(path, purpose="export_motions_condition_table",
                                       overwrite=overwrite, allowed_suffixes=(".txt",))
     app = com.connect("motions")
-    catalog = constants.discover(app, name_filter="skTab")["constants"]
-    if not isinstance(table, str) or not table.startswith("skTab") or type(catalog.get(table)) is not int:
-        raise MaxsurfValidationError("unknown native results table")
+    number = _results_table(app, table)
     design = _require_ready(app)
     selected = _conditions(design, speed_index, heading_index, spectrum_index,
                            location_index, frequency_index, section_index)
     return com.to_json(_export(design, target, "ExportResults", selected,
-                               table=catalog[table], summary=table == "skTabSummary"))
+                               table=number, summary=table == "skTabSummary"))
 
 
 @guarded(classification=Classification.WRITE_FILE, module="motions", channel=Channel.MCP_COM)

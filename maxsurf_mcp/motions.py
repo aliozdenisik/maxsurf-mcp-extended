@@ -34,7 +34,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from . import audit, com, config, workspace
+from . import audit, com, config, native_enum, workspace
 from . import validation as val
 from .audit import Channel, Classification
 from .errors import (
@@ -103,6 +103,21 @@ def _digest(path: Any) -> dict[str, Any]:
             digest.update(chunk)
             size += len(chunk)
     return {"bytes": size, "sha256": digest.hexdigest()}
+
+
+def _results_table(app: Any, table: Any) -> int:
+    """Native number of one skTab results table; unknown names list the valid ones."""
+    try:
+        if not isinstance(table, str) or not table.startswith("skTab"):
+            raise MaxsurfValidationError("unknown native Motions results table")
+        return native_enum.constant(app, table)
+    except MaxsurfValidationError as exc:
+        raise MaxsurfValidationError(
+            "unknown native Motions results table", requested=table,
+            # The live type also holds skInp* members, which the guard above refuses.
+            available=sorted(name for name in native_enum.members(app, "skTabEnumerationType")
+                             if name.startswith("skTab")),
+        ) from exc
 
 
 def _require_ready(app: Any, *, loaded: bool = True) -> Any:
@@ -287,12 +302,11 @@ def configure_motions_analysis(
                         for i in range(1, int(collection.Count)+1)}
             if existing.intersection(row[0].casefold() for row in rows):
                 raise MaxsurfValidationError("name already exists", collection=label)
-    from .stability import _constant
-    atype=_constant(app,val.name(analysis_type))
-    vtype=_constant(app,val.name(vessel_type))
+    atype=native_enum.constant(app,val.name(analysis_type))
+    vtype=native_enum.constant(app,val.name(vessel_type))
     if not analysis_type.startswith("skAT") or not vessel_type.startswith("skVT"):
         raise MaxsurfValidationError("wrong analysis/vessel enum family")
-    types={kind:_constant(app,kind) for _,kind,_ in spec_rows}
+    types={kind:native_enum.constant(app,kind) for _,kind,_ in spec_rows}
     spectrum_readbacks=[]
     location_readbacks=[]
     try:
@@ -536,15 +550,11 @@ def export_motions_table(path: str, table: str, overwrite: bool = False) -> str:
                                       overwrite=overwrite, allowed_suffixes=(".txt",))
     app = com.connect("motions")
     design = _require_ready(app)
-    from . import constants as comconstants
-    catalog = {k: v for k, v in comconstants.discover(app, name_filter="skTab")["constants"].items()
-               if k.startswith("skTab") and isinstance(v, int) and not isinstance(v, bool)}
-    if table not in catalog:
-        raise MaxsurfValidationError("unknown native Motions results table", available=sorted(catalog))
+    number = _results_table(app, table)
     target.parent.mkdir(parents=True, exist_ok=True)
     staged = target.with_name(target.stem + "." + uuid4().hex + target.suffix)
     try:
-        result = design.ExportResults(catalog[table], str(staged))
+        result = design.ExportResults(number, str(staged))
         if result is False or not staged.is_file() or staged.stat().st_size == 0:
             raise MaxsurfCOMError("native Motions export did not write a nonempty file", path=str(target))
         data = staged.read_bytes()

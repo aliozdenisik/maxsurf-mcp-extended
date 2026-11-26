@@ -135,7 +135,7 @@ class HeadingUnitTests(unittest.TestCase):
         specs=NS(Count=0);specs.Add=lambda:setattr(specs,"Count",specs.Count+1);specs.Item=lambda i:specitem
         vessel=NS(**{name:0 for name in ("VesselType","DraftAft","DraftFwd","VCG","GyradiusRoll","GyradiusPitch","GyradiusYaw","RollDampingNonDim")})
         d=NS(AnalysisType=0,Vessel=vessel,AnalysisOptions=NS(WaterDensity=0),Headings=coll,Speeds=speed,Spectra=specs)
-        with patch.object(com,"connect"),patch.object(motions,"_require_ready",return_value=d),patch.object(stability,"_constant",return_value=1):
+        with patch.object(com,"connect"),patch.object(motions,"_require_ready",return_value=d),patch("maxsurf_mcp.native_enum.constant",return_value=1):
             motions.configure_motions_analysis.__wrapped__("[180]","[0]",'[ {"type":"skSpectrumJONSWAP","hs_m":4,"tp_s":10} ]',1025,2.5,2.5,2,11,11,.075,"skATStripTheory","skVTMonohull")
         self.assertAlmostEqual(coll.Add.call_args.args[1],math.pi)
     def test_results_use_tested_axes_and_return_degrees(self):

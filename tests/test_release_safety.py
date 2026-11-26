@@ -104,7 +104,7 @@ class PreMutationTests(unittest.TestCase):
 
     def test_unreadable_method_selection_is_not_selected(self):
         methods = NS(IsSelected=lambda n: (_ for _ in ()).throw(RuntimeError('unreadable')))
-        with patch.object(resistance,'_method_catalog',return_value={'hsMTHoltrop':5}), self.assertRaises(MaxsurfCOMError):
+        with patch('maxsurf_mcp.native_enum.members',return_value={'hsMTHoltrop':5}), self.assertRaises(MaxsurfCOMError):
             resistance._selected_methods(NS(),NS(Methods=methods))
 
     def test_bad_motions_input_rejected_before_connection(self):
@@ -123,7 +123,7 @@ class NativeCriteriaTests(unittest.TestCase):
         criteria=NS(Count=len(items),Item=lambda i:items[i-1],DeleteAll=lambda:None,
                     Import=lambda p:None,Calculate=lambda:None,AnalysisSuccessful=lambda message:success)
         design=NS(Criteria=criteria,RunAnalysis=lambda:None)
-        with patch.object(com,'connect',return_value=NS(Design=design)), patch.object(stability,'_resolve_hcr',return_value='fake.hcr'), patch.object(stability,'_constant',return_value=1), patch.object(stability,'_set_stability_heel'), patch.object(stability,'_read_xmlgrid_table',return_value={'rows':[]}):
+        with patch.object(com,'connect',return_value=NS(Design=design)), patch.object(stability,'_resolve_hcr',return_value='fake.hcr'), patch("maxsurf_mcp.native_enum.constant",return_value=1), patch.object(stability,'_set_stability_heel'), patch.object(stability,'_read_xmlgrid_table',return_value={'rows':[]}):
             return json.loads(stability.evaluate_stability_criteria.__wrapped__('S','L',0,10,5,20,5,30,5,confirm_replace=True))
 
     def test_all_native_passes_with_success_can_pass(self):

@@ -9,11 +9,10 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from . import com, validation as val
+from . import com, native_enum, validation as val
 from .audit import Channel, Classification
 from .errors import MaxsurfCOMError, MaxsurfSafetyError, MaxsurfValidationError
 from .guard import guarded, register
-from .stability import _constant
 
 TRIM_MODES = {
     "fixed": ("hmTMFixed", "FixedTrimValue"),
@@ -92,7 +91,7 @@ def set_stability_trim(mode: str, value_m: float | None = None) -> str:
         raise MaxsurfValidationError("value_m required only for fixed, initial or lcg")
     value = val.number(value_m, "value_m") if member else None
     app = com.connect("stability")
-    native_mode = _constant(app, constant)
+    native_mode = native_enum.constant(app, constant)
     trim = app.Design.Trim
     if member:
         val.stored(trim, member, value)
@@ -110,7 +109,7 @@ def set_stability_fluid_mode(mode: str) -> str:
     if mode not in FLUID_MODES:
         raise MaxsurfValidationError("unknown fluid mode")
     app = com.connect("stability")
-    value = _constant(app, FLUID_MODES[mode])
+    value = native_enum.constant(app, FLUID_MODES[mode])
     val.stored(app.Design.Fluids, "FluidMode", value)
     return com.to_json({"mode": mode, "native_value": value, "verified": True})
 
@@ -127,7 +126,7 @@ def set_stability_density(fluid: str, density_kg_m3: float) -> str:
         raise MaxsurfValidationError("unknown global fluid type")
     density = val.number(density_kg_m3, "density_kg_m3", positive=True)
     app = com.connect("stability")
-    value = _constant(app, fluid)
+    value = native_enum.constant(app, fluid)
     native = app.Design.Density
     native.SetSpecificGravity(value, density / 1000.0)
     actual = val.number(native.SpecificGravity(value), "SpecificGravity", positive=True)
@@ -183,7 +182,7 @@ def define_conditional_keypoints(points_json: str) -> str:
     unknown = {row["LinkedTo"] for row in planned} - known
     if unknown:
         raise MaxsurfValidationError("unknown linked room", rooms=sorted(unknown))
-    kind = _constant(app, "hmKTConditionalFlooding")
+    kind = native_enum.constant(app, "hmKTConditionalFlooding")
     stored = []
     try:
         for index, row in enumerate(planned, before + 1):

@@ -16,7 +16,7 @@ class ControlsTests(unittest.TestCase):
         self.addCleanup(self.connection.stop)
 
     def test_writable_measurements_and_chine_readback(self):
-        with patch.object(controls, "_constant", return_value=1):
+        with patch("maxsurf_mcp.native_enum.constant", return_value=1):
             result = json.loads(controls.set_resistance_measurements(
                 '{"Draft": 5, "DraftFP": 4.5, "LCGFromMidships": -2}',
                 "hsCTHardChine"))
@@ -46,7 +46,7 @@ class ControlsTests(unittest.TestCase):
             controls.set_resistance_measurements('{"Draft": 5}')
 
     def test_automatic_and_manual_factors(self):
-        with patch.object(controls, "_constant", return_value=12):
+        with patch("maxsurf_mcp.native_enum.constant", return_value=12):
             self.assertEqual(json.loads(controls.set_resistance_form_factor(
                 "automatic"))["one_plus_k"], -1)
             self.assertEqual(json.loads(controls.set_resistance_form_factor(
@@ -59,6 +59,6 @@ class ControlsTests(unittest.TestCase):
                 with self.assertRaises(MaxsurfValidationError):
                     controls.set_resistance_form_factor(mode, factor)
         self.app.Design.Methods.selected.clear()
-        with patch.object(controls, "_constant", return_value=12):
+        with patch("maxsurf_mcp.native_enum.constant", return_value=12):
             with self.assertRaises(MaxsurfValidationError):
                 controls.set_resistance_form_factor("automatic")

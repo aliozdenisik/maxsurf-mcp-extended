@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from . import com
+from . import com, native_enum
 from .audit import Channel, Classification
 from .errors import MaxsurfCOMError, MaxsurfValidationError
 from .guard import guarded, register
 from .modeler import _surface_at
-from .surfaces import _number, _resolve_enum
+from .surfaces import _number
 
 
 # Exact input order from ISurface in the installed Modeler 2026 typelib.
@@ -63,13 +63,14 @@ def get_surface_area_properties(
 ) -> str:
     """READ-ONLY. Return native AreaProperties Variant without guessed fields.
 
-    area_type is an msAT enum name; projection_type is an msAPT enum name.
+    area_type is an msAreaType member name; projection_type is an
+    msAreaProjectionType member name.
     The native Variant layout is not interpreted as named physical quantities.
     """
     app = com.connect("modeler")
     surface, _ = _surface_at(app.Design.Surfaces, index)
-    area = _resolve_enum(app, "msAT", area_type, "area_type")
-    projection = _resolve_enum(app, "msAPT", projection_type, "projection_type")
+    area = native_enum.resolve(app, "msAreaType", area_type, "area_type")
+    projection = native_enum.resolve(app, "msAreaProjectionType", projection_type, "projection_type")
     return com.to_json({
         "index": index, "area_type": area, "projection_type": projection,
         "native_area_properties": surface.AreaProperties(

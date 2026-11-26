@@ -3,12 +3,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import com, validation as val
+from . import com, native_enum, validation as val
 from .audit import Channel, Classification
 from .errors import MaxsurfValidationError
 from .guard import guarded, register
 from .resistance import (
-    VESSEL_FIELDS, VESSEL_UNITS, _constant, _require_ready, _vessel_snapshot,
+    VESSEL_FIELDS, VESSEL_UNITS, _require_ready, _vessel_snapshot,
 )
 
 
@@ -36,7 +36,7 @@ def set_resistance_measurements(measurements_json: str, chine_type: str = "") ->
     targets = {field: val.number(value, field) for field, value in values.items()}
     app = com.connect("resistance")
     design = _require_ready(app)
-    chine = _constant(app, chine_type) if chine_type else None
+    chine = native_enum.constant(app, chine_type) if chine_type else None
     for field, value in targets.items():
         val.stored(design.Vessel, field, value)
     if chine is not None:
@@ -61,7 +61,7 @@ def set_resistance_form_factor(mode: str, one_plus_k: float | None = None) -> st
         target = val.number(one_plus_k, "one_plus_k", positive=True)
     app = com.connect("resistance")
     design = _require_ready(app)
-    method = _constant(app, "hsMTSlenderBody")
+    method = native_enum.constant(app, "hsMTSlenderBody")
     if not design.Methods.IsSelected(method):
         raise MaxsurfValidationError("select hsMTSlenderBody before setting its form factor")
     actual = val.stored(design.Methods, "SlenderBodyOnePlusK", target)

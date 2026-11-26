@@ -4,11 +4,12 @@ from __future__ import annotations
 from typing import Any
 
 from . import com, validation as val
+from .native_enum import constant as _constant  # module-level name, patched by tests
 from .audit import Channel, Classification
 from .errors import MaxsurfValidationError
 from .guard import guarded, register
 from .resistance import (
-    VESSEL_FIELDS, VESSEL_UNITS, _constant, _require_ready, _vessel_snapshot,
+    VESSEL_FIELDS, VESSEL_UNITS, _require_ready, _vessel_snapshot,
 )
 
 

@@ -8,7 +8,8 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
-from . import com, constants, workspace
+from . import com, native_enum, workspace
+from . import constants  # noqa: F401 - native_enum's fallback source, patched by tests
 from .audit import Channel, Classification
 from .errors import MaxsurfCOMError, MaxsurfSafetyError, MaxsurfValidationError
 from .guard import guarded, register
@@ -100,14 +101,14 @@ def export_motions_condition_table(path: str, table: str, speed_index: int,
     target = workspace.resolve_target(path, purpose="export_motions_condition_table",
                                       overwrite=overwrite, allowed_suffixes=(".txt",))
     app = com.connect("motions")
-    catalog = constants.discover(app, name_filter="skTab")["constants"]
-    if not isinstance(table, str) or not table.startswith("skTab") or type(catalog.get(table)) is not int:
+    if not isinstance(table, str) or not table.startswith("skTab"):
         raise MaxsurfValidationError("unknown native results table")
+    number = native_enum.constant(app, table)
     design = _require_ready(app)
     selected = _conditions(design, speed_index, heading_index, spectrum_index,
                            location_index, frequency_index, section_index)
     return com.to_json(_export(design, target, "ExportResults", selected,
-                               table=catalog[table], summary=table == "skTabSummary"))
+                               table=number, summary=table == "skTabSummary"))
 
 
 @guarded(classification=Classification.WRITE_FILE, module="motions", channel=Channel.MCP_COM)

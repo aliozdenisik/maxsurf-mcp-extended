@@ -20,9 +20,9 @@ import math
 from datetime import datetime, timezone
 from typing import Any
 
-from . import audit, com, config, workspace
+from . import audit, com, config, native_enum, workspace
 from . import validation as val
-from . import constants as comconstants
+from . import constants as comconstants  # noqa: F401 - native_enum's fallback source, patched by tests
 from .audit import Channel, Classification
 from .errors import (
     MaxsurfAnalysisError,
@@ -83,26 +83,8 @@ def _scalar(obj: Any, member: str, cast: Any = None) -> dict[str, Any]:
     return {"value":value,"status":"read"}
 
 
-def _constant(app: Any, name: str) -> int:
-    discovered = comconstants.discover(app, name_filter=name)
-    value = discovered.get("constants", {}).get(name)
-    if not isinstance(value, int) or isinstance(value, bool):
-        raise MaxsurfValidationError(
-            "Resistance method constant could not be resolved from the live "
-            "or generated type library",
-            method=name, source=discovered.get("source"),
-        )
-    return int(value)
-
-
 def _method_catalog(app: Any) -> dict[str, int]:
-    discovered = comconstants.discover(app, name_filter="hsMT")
-    return {
-        name: int(value)
-        for name, value in discovered.get("constants", {}).items()
-        if name.startswith("hsMT") and isinstance(value, int)
-        and not isinstance(value, bool)
-    }
+    return native_enum.members(app, "hsMethodType")
 
 
 def _require_ready(app: Any, *, loaded: bool = True) -> Any:

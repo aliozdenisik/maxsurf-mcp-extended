@@ -6,7 +6,7 @@ stored values, not the engineering interpretation of an unaccepted native build.
 from __future__ import annotations
 
 from typing import Any
-from . import multiframe as m, validation as val, com
+from . import multiframe as m, native_enum, validation as val, com
 from .audit import Channel, Classification
 from .errors import MaxsurfValidationError, MaxsurfSafetyError, MaxsurfCOMError
 from .guard import guarded, register
@@ -114,7 +114,7 @@ def add_multiframe_element_loads(case_index: int, case_name: str, loads_json: st
             raise MaxsurfValidationError("Unused native shape parameters must be zero", fields=unused)
     app,f=m._app();state=m._unit_guard(app,unit_token)
     lc=_item(f.LoadCases,case_index,case_name,"Name")
-    if lc.Type != m._enum(app,"mflcStatic"):
+    if lc.Type != native_enum.constant(app,"mflcStatic"):
         raise MaxsurfValidationError("Member load tool requires a static case")
     m._expected(lc.ElementLoads,expected_count)
     prepared=[]
@@ -123,7 +123,7 @@ def add_multiframe_element_loads(case_index: int, case_name: str, loads_json: st
         length=val.number(e.Length,"Length",positive=True)
         if r["distance1"]+r["distance2"]>length:
             raise MaxsurfValidationError("Load distances exceed element length")
-        prepared.append((r,e,m._enum(app,r["dof"]),m._enum(app,r["shape"])))
+        prepared.append((r,e,native_enum.constant(app,r["dof"]),native_enum.constant(app,r["shape"])))
     created=[]
     for r,e,dof,shape in prepared:
         obj=m._read("ElementLoads.AddLoad",lambda:lc.ElementLoads.AddLoad(
@@ -152,7 +152,7 @@ def set_multiframe_modal_controls(modes: int, solver: str, scaling: str,
     _choice(solver,SOLVERS,"solver");_choice(scaling,SCALINGS,"scaling")
     _choice(mass_formulation,("distributed","lumped"),"mass_formulation")
     app,f=m._app();state=m._unit_guard(app,unit_token)
-    values={"Modes":modes,"Solver":m._enum(app,solver),"Scaling":m._enum(app,scaling),
+    values={"Modes":modes,"Solver":native_enum.constant(app,solver),"Scaling":native_enum.constant(app,scaling),
             "MaxIterations":max_iterations,"Tolerance":tolerance}
     obj=f.Analysis.ModalSettings
     selected="DistributedMass" if mass_formulation=="distributed" else "LumpedMass"
@@ -177,9 +177,9 @@ def set_multiframe_units(units_json: str, unit_token: str, unit_set: str = "") -
     units={n:val.name(v,n) for n,v in units.items()}
     if unit_set: _choice(unit_set,UNITSETS,"unit_set")
     app,_=m._app();m._unit_guard(app,unit_token)
-    resolved={n:m._enum(app,"mfUnit"+n) for n in units}
+    resolved={n:native_enum.constant(app,"mfUnit"+n) for n in units}
     if unit_set:
-        native=m._enum(app,unit_set)
+        native=native_enum.constant(app,unit_set)
         m._read("UnitSet",lambda:val.stored(app.Preferences,"UnitSet",native))
     for n,v in units.items():
         m._native_completed(m._read("SetUnit",lambda:app.Preferences.SetUnit(resolved[n],v)),"SetUnit")
@@ -247,8 +247,8 @@ def add_multiframe_springs(springs_json: str, expected_count: int, unit_token: s
         _choice(r["type"],types,"type");m._boolean(r["global"],"global")
         r["stiffness"]=val.number(r["stiffness"],"stiffness",positive=True)
     app,f=m._app();state=m._unit_guard(app,unit_token);m._expected(f.springs,expected_count)
-    prepared=[(r,m._node(f,r["node"],r["node_label"]),m._enum(app,r["dof"]),
-               m._enum(app,r["type"])) for r in rows]
+    prepared=[(r,m._node(f,r["node"],r["node_label"]),native_enum.constant(app,r["dof"]),
+               native_enum.constant(app,r["type"])) for r in rows]
     created=[]
     for r,node,dof,kind in prepared:
         obj=m._read("Springs.AddSpring",lambda:f.springs.AddSpring(node,dof,r["stiffness"]))

@@ -18,11 +18,21 @@ from .errors import MaxsurfValidationError
 # caller needs it. Types missing here fail closed on the fallback path.
 _PREFIXES = {
     "hmVtype": "hmView",
+    "hsMethodType": "hsMT",
+    "msAreaProjectionType": "msAPT",
+    "msAreaType": "msAT",
     "msDirectionType": "msDT",
+    "msGridType": "msGT",
+    "msLongDatumType": "msLDT",
     "msMarkerType": "msMT",
+    "msShapeSymmetryType": "msSST",
+    "msSurfaceBondContinuity": "msBond",
+    "msSurfaceEdge": "msEdge",
     "msSurfaceLibrary": "msSL",
     "msSurfaceSkinDirection": "msSSD",
+    "msSurfaceType": "msST",
     "msSurfaceUse": "msSU",
+    "msVertDatumType": "msVDT",
 }
 
 # Type-library members per connected app object; holding the app keeps id() unique.
@@ -77,7 +87,7 @@ def members(app: Any, enum_type: str) -> dict[str, int]:
     if not result:
         raise MaxsurfValidationError(
             "native enum type unavailable", enum_type=enum_type,
-            source=discovered["source"] if discovered else "generated_constants")
+            source=(discovered or {}).get("source", "generated_constants"))
     return result
 
 
@@ -106,5 +116,5 @@ def constant(app: Any, name: str) -> int:
     number = discovered["constants"].get(name)
     if number is None or isinstance(number, bool):
         raise MaxsurfValidationError("native constant unavailable",
-                                     constant=name, source=discovered["source"])
+                                     constant=name, source=discovered.get("source", "generated_constants"))
     return int(number)

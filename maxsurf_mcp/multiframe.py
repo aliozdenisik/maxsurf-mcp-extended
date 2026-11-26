@@ -9,7 +9,7 @@ import json
 import math
 import os
 from typing import Any
-from . import com, constants, validation as val, workspace
+from . import com, constants, native_enum, validation as val, workspace
 from .audit import Channel, Classification
 from .errors import MaxsurfAnalysisError, MaxsurfCOMError, MaxsurfSafetyError, MaxsurfValidationError
 from .guard import guarded, register
@@ -33,12 +33,6 @@ def _boolean(x, name):
     if type(x) is not bool: raise MaxsurfValidationError(f"{name} must be Boolean")
     return x
 
-def _enum(app, name):
-    values = constants.discover(app)["constants"]
-    if name not in values or type(values[name]) is not int:
-        raise MaxsurfValidationError("Native constant is unavailable", constant=name)
-    return values[name]
-
 def _native_completed(value, operation):
     # Installed 2025 ITypeInfo declares VT_VOID for lifecycle/Analyse methods,
     # despite legacy CHM Boolean descriptions. Completion still needs readbacks.
@@ -59,7 +53,7 @@ def _app():
 def _unit_state(app):
     units = {}
     for name in UNIT_NAMES:
-        value = app.Preferences.GetUnit(_enum(app, "mfUnit" + name))
+        value = app.Preferences.GetUnit(native_enum.constant(app, "mfUnit" + name))
         if not isinstance(value, str) or not value.strip():
             raise MaxsurfCOMError("Cannot establish native units", category=name)
         units[name] = value
@@ -307,7 +301,7 @@ def add_multiframe_restraints(restraints_json: str, expected_count: int, unit_to
     app,f=_app();state=_unit_guard(app,unit_token);_expected(f.restraints,expected_count)
     existing={f.restraints.Item(i).NodeIndex for i in range(1,expected_count+1)}
     if existing & {r["node"] for r in rows}:raise MaxsurfValidationError("Node already has a restraint")
-    prepared=[(r,_node(f,r["node"],r["node_label"]),_enum(app,r["type"])) for r in rows]
+    prepared=[(r,_node(f,r["node"],r["node_label"]),native_enum.constant(app,r["type"])) for r in rows]
     for r,n,t in prepared:
         o=f.restraints.AddRestraint(n,t);val.stored(o,"Global",True)
         _equal(o.NodeIndex,r["node"],"support node");_equal(o.Type,t,"support type")
@@ -328,8 +322,8 @@ def add_multiframe_loadcase(name: str, loads_json: str, expected_count: int, uni
         r["value"]=val.number(r["value"],"value")
     app,f=_app();state=_unit_guard(app,unit_token);_expected(f.LoadCases,expected_count)
     if name in [f.LoadCases.Item(i).Name for i in range(1,expected_count+1)]:raise MaxsurfValidationError("Load-case name exists")
-    prepared=[(r,_node(f,r["node"],r["node_label"]),_enum(app,r["dof"])) for r in rows]
-    case_type=_enum(app,"mflcStatic")
+    prepared=[(r,_node(f,r["node"],r["node_label"]),native_enum.constant(app,r["dof"])) for r in rows]
+    case_type=native_enum.constant(app,"mflcStatic")
     lc=f.LoadCases.AddCase(case_type,name);_equal(lc.Name,name,"loadcase name");_equal(lc.Type,case_type,"loadcase type")
     for r,n,dof in prepared:
         o=lc.NodeLoads.AddLoad(n,dof,r["value"],True)

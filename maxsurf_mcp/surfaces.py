@@ -40,21 +40,22 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from . import com
-from . import constants as comconstants
+from . import com, native_enum
+# Unused here; kept so tests can patch discover via this module path.
+from . import constants as comconstants  # noqa: F401
 from .audit import Channel, Classification
 from .errors import MaxsurfCOMError, MaxsurfSafetyError, MaxsurfValidationError
 from .guard import guarded, register
 from .modeler import _control_point, _control_point_limits, _surface_at
 
-#: Payload field -> (COM member, kind, enum prefix). ``kind`` drives both the
+#: Payload field -> (COM member, kind, enum type). ``kind`` drives both the
 #: cast on read and the coercion on write. Every member and type here came from
 #: the type library, not from a guess.
 SURFACE_PROPERTIES: dict[str, tuple[str, str, str | None]] = {
     "name": ("Name", "str", None),
-    "type": ("Type", "enum", "msST"),
-    "use": ("Use", "enum", "msSU"),
-    "skin_direction": ("SkinDirection", "enum", "msSSD"),
+    "type": ("Type", "enum", "msSurfaceType"),
+    "use": ("Use", "enum", "msSurfaceUse"),
+    "skin_direction": ("SkinDirection", "enum", "msSurfaceSkinDirection"),
     "symmetrical": ("Symmetrical", "bool", None),
     "visible": ("Visible", "bool", None),
     "locked": ("Locked", "bool", None),
@@ -74,52 +75,15 @@ SURFACE_PROPERTIES: dict[str, tuple[str, str, str | None]] = {
 #: refused on write so a caller cannot believe they renumbered a surface.
 READ_ONLY_PROPERTIES = ("id", "assembly_name")
 
-#: Enum families resolved from the generated type library at runtime. Values are
-#: never hard-coded; only the prefixes appear here.
-ENUM_PREFIXES = {
-    "direction": "msDT",
-    "symmetry": "msSST",
-    "edge": "msEdge",
-    "continuity": "msBond",
-    "library": "msSL",
+#: Enum families by their type-library type name. Values are never hard-coded;
+#: native_enum resolves them from the live session.
+ENUM_TYPES = {
+    "direction": "msDirectionType",
+    "symmetry": "msShapeSymmetryType",
+    "edge": "msSurfaceEdge",
+    "continuity": "msSurfaceBondContinuity",
+    "library": "msSurfaceLibrary",
 }
-
-
-def _enum_map(app: Any, prefix: str) -> dict[str, int]:
-    discovered = comconstants.discover(app, name_filter=prefix)
-    return {
-        name: int(number)
-        for name, number in discovered["constants"].items()
-        if name.startswith(prefix) and not isinstance(number, bool)
-    }
-
-
-def _enum_name(members: dict[str, int], value: Any) -> str | None:
-    for name, number in members.items():
-        if number == value:
-            return name
-    return None
-
-
-def _resolve_enum(app: Any, prefix: str, requested: str,
-                  field: str) -> dict[str, Any]:
-    """Turn an enum member name into its runtime number, case-insensitively."""
-    if not isinstance(requested, str) or not requested.strip():
-        raise MaxsurfValidationError(
-            f"{field} must be a non-empty enum member name", field=field
-        )
-    members = _enum_map(app, prefix)
-    canonical = next(
-        (name for name in members
-         if name.casefold() == requested.strip().casefold()),
-        None,
-    )
-    if canonical is None:
-        raise MaxsurfValidationError(
-            f"unknown {field} enum member", field=field, requested=requested,
-            available=sorted(members),
-        )
-    return {"enum_name": canonical, "value": members[canonical]}
 
 
 def _number(field: str, value: Any) -> float:
@@ -412,8 +376,8 @@ def flip_surface(index: int, direction: str, plane_location: float,
     set_surface_properties.
     """
     app = com.connect("modeler")
-    resolved = _resolve_enum(app, ENUM_PREFIXES["direction"], direction,
-                             "direction")
+    resolved = native_enum.resolve(app, ENUM_TYPES["direction"], direction,
+                                   "direction")
     location = _number("plane_location", plane_location)
     return _transform(
         app, index, "Flip",
@@ -445,7 +409,7 @@ def invert_surface_normal(index: int) -> str:
 # -- G2: properties and assemblies -------------------------------------------
 
 def _read_property(app: Any, surface: Any, field: str) -> dict[str, Any]:
-    member, kind, prefix = SURFACE_PROPERTIES[field]
+    member, kind, enum_type = SURFACE_PROPERTIES[field]
     probed = com.probe(surface, member)
     entry: dict[str, Any] = {"member": member, "kind": kind}
     if probed["status"] != "read":
@@ -468,8 +432,8 @@ def _read_property(app: Any, surface: Any, field: str) -> dict[str, Any]:
         return {**entry, "value": None, "status": "uncastable",
                 "detail": str(exc)[:200]}
     entry.update({"value": value, "status": "read", "detail": None})
-    if kind == "enum" and prefix:
-        entry["enum_name"] = _enum_name(_enum_map(app, prefix), value)
+    if kind == "enum" and enum_type:
+        entry["enum_name"] = native_enum.name_of(app, enum_type, value)
     return entry
 
 
@@ -500,7 +464,7 @@ def get_surface_properties(index: int = 1) -> str:
 
 def _coerce(app: Any, field: str, value: Any) -> dict[str, Any]:
     """Turn a caller's value into what the COM property expects."""
-    member, kind, prefix = SURFACE_PROPERTIES[field]
+    member, kind, enum_type = SURFACE_PROPERTIES[field]
     if kind == "bool":
         if not isinstance(value, bool):
             raise MaxsurfValidationError(
@@ -525,7 +489,7 @@ def _coerce(app: Any, field: str, value: Any) -> dict[str, Any]:
             )
         return {"value": int(value), "enum_name": None}
     # enum: accept the member name, never a bare number
-    resolved = _resolve_enum(app, prefix or "", str(value), field)
+    resolved = native_enum.resolve(app, enum_type or "", str(value), field)
     return {"value": resolved["value"], "enum_name": resolved["enum_name"]}
 
 
@@ -541,7 +505,7 @@ def _apply_properties(app: Any, surface: Any,
                  for field, value in requested.items()}
     applied: list[dict[str, Any]] = []
     for field, value in requested.items():
-        member, kind, _prefix = SURFACE_PROPERTIES[field]
+        member, kind, _enum_type = SURFACE_PROPERTIES[field]
         before = _read_property(app, surface, field)
         coerced = validated[field]
         record: dict[str, Any] = {
@@ -706,7 +670,7 @@ def list_surface_library() -> str:
     wrong shape silently. Pass any of these names to create_library_surface.
     """
     app = com.connect("modeler")
-    shapes = _enum_map(app, ENUM_PREFIXES["library"])
+    shapes = native_enum.members(app, ENUM_TYPES["library"])
     return com.to_json({
         "count": len(shapes),
         "shapes": [{"enum_name": name, "value": value}
@@ -763,8 +727,8 @@ def add_quadrilateral_surface(name: str, symmetry: str,
                       for axis in range(3))
 
     app = com.connect("modeler")
-    resolved = _resolve_enum(app, ENUM_PREFIXES["symmetry"], symmetry,
-                             "symmetry")
+    resolved = native_enum.resolve(app, ENUM_TYPES["symmetry"], symmetry,
+                                   "symmetry")
     surfaces = app.Design.Surfaces
     count_before = int(surfaces.Count)
     surfaces.AddQuadrilateralFromCorners(name, resolved["value"], *values)
@@ -920,8 +884,8 @@ def add_parametric_surface(shape: str, parameters_json: str) -> str:
             arguments.append(value)
             resolved[name] = value
         elif name in ENUM_ARGUMENTS:
-            enum = _resolve_enum(app, ENUM_PREFIXES[ENUM_ARGUMENTS[name]],
-                                 value, name)
+            enum = native_enum.resolve(app, ENUM_TYPES[ENUM_ARGUMENTS[name]],
+                                       value, name)
             arguments.append(enum["value"])
             resolved[name] = enum
         else:
@@ -1011,13 +975,13 @@ def bond_surfaces(first_index: int, first_edge: str, second_index: int,
             index=first_index, edge=first_edge,
         )
     edges = {
-        "first_edge": _resolve_enum(app, ENUM_PREFIXES["edge"], first_edge,
-                                    "first_edge"),
-        "second_edge": _resolve_enum(app, ENUM_PREFIXES["edge"], second_edge,
-                                     "second_edge"),
+        "first_edge": native_enum.resolve(app, ENUM_TYPES["edge"], first_edge,
+                                          "first_edge"),
+        "second_edge": native_enum.resolve(app, ENUM_TYPES["edge"], second_edge,
+                                           "second_edge"),
     }
-    bond = _resolve_enum(app, ENUM_PREFIXES["continuity"], continuity,
-                         "continuity")
+    bond = native_enum.resolve(app, ENUM_TYPES["continuity"], continuity,
+                               "continuity")
     names = (first.Name, second.Name)
     previous_names = ([str(surfaces(index).Name) for index in range(1, count_before + 1)]
                       if insert_connecting_surface else [])
@@ -1098,15 +1062,15 @@ def unbond_surface(index: int, edge: str) -> str:
     app = com.connect("modeler")
     surfaces = app.Design.Surfaces
     surface, count_before = _surface_at(surfaces, index)
-    resolved = _resolve_enum(app, ENUM_PREFIXES["edge"], edge, "edge")
+    resolved = native_enum.resolve(app, ENUM_TYPES["edge"], edge, "edge")
     name = surface.Name
     surfaces.Unbond(index, resolved["value"])
     target = {
         "surface": str(surface.BondedToWhichSurface(resolved["value"])),
         "edge": int(surface.BondedToWhichEdge(resolved["value"])),
     }
-    null_edge = _resolve_enum(app, ENUM_PREFIXES["edge"], "msEdgeNull",
-                              "unbonded_edge")
+    null_edge = native_enum.resolve(app, ENUM_TYPES["edge"], "msEdgeNull",
+                                    "unbonded_edge")
     if int(surfaces.Count) != count_before or (
         target["surface"] not in ("", "Unbonded")
         or target["edge"] != null_edge["value"]

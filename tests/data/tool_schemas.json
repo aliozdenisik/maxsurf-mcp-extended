@@ -81,7 +81,6 @@
     "type": "object"
   },
   "set_hydrostatic_settings": {
-    "additionalProperties": false,
     "properties": {
       "trimming": {
         "anyOf": [
@@ -98,6 +97,13 @@
       "precision": {
         "anyOf": [
           {
+            "enum": [
+              "lowest",
+              "low",
+              "medium",
+              "high",
+              "highest"
+            ],
             "type": "string"
           },
           {
@@ -109,7 +115,8 @@
       }
     },
     "title": "set_hydrostatic_settingsArguments",
-    "type": "object"
+    "type": "object",
+    "additionalProperties": false
   },
   "get_hydrostatic_results": {
     "additionalProperties": false,
@@ -1287,12 +1294,12 @@
         "type": "integer"
       },
       "merge_node_tolerance": {
-        "default": 0.00001,
+        "default": 1e-05,
         "title": "Merge Node Tolerance",
         "type": "number"
       },
       "skinny_triangle_tolerance": {
-        "default": 0.00001,
+        "default": 1e-05,
         "title": "Skinny Triangle Tolerance",
         "type": "number"
       },
@@ -1358,12 +1365,12 @@
         "type": "boolean"
       },
       "merge_node_tolerance": {
-        "default": 0.00001,
+        "default": 1e-05,
         "title": "Merge Node Tolerance",
         "type": "number"
       },
       "skinny_triangle_tolerance": {
-        "default": 0.00001,
+        "default": 1e-05,
         "title": "Skinny Triangle Tolerance",
         "type": "number"
       }

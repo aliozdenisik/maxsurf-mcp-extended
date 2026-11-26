@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import math
-from typing import Any
+from typing import Any, Literal
 
 from . import com, hydrostatics
 from .audit import Classification
@@ -80,7 +80,7 @@ def get_hydrostatic_settings() -> str:
 
 @guarded(classification=Classification.WRITE_STATE, module="modeler")
 def set_hydrostatic_settings(trimming: bool | None = None,
-                            precision: str | None = None) -> str:
+                            precision: Literal["lowest", "low", "medium", "high", "highest"] | None = None) -> str:
     """Set trimming/precision and verify both through native getters.
 
     Precision accepts lowest, low, medium, high, highest. Neither preference

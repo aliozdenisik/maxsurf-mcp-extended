@@ -32,8 +32,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from . import audit, com
-from . import constants as comconstants
+from . import audit, com, native_enum
 from .audit import Channel, Classification
 from .errors import MaxsurfCOMError, MaxsurfSafetyError, MaxsurfValidationError
 from .guard import guarded, register
@@ -77,7 +76,7 @@ INTERNAL_ZERO_DIRECTIONS: tuple[tuple[str, str], ...] = (
 DATUM_SELECTORS: dict[str, dict[str, Any]] = {
     "long_datum": {
         "member": "LongDatum",
-        "prefix": "msLDT",
+        "enum_type": "msLongDatumType",
         "axis": "longitudinal",
         "targets": {
             "msLDTAftPerp": "aft_perp",
@@ -88,7 +87,7 @@ DATUM_SELECTORS: dict[str, dict[str, Any]] = {
     },
     "vert_datum": {
         "member": "VertDatum",
-        "prefix": "msVDT",
+        "enum_type": "msVertDatumType",
         "axis": "vertical",
         "targets": {
             "msVDTDatumWL": "datum_wl",
@@ -190,33 +189,18 @@ def _read_indexed(obj: Any, member: str, index: int) -> dict[str, Any]:
             "detail": None}
 
 
-def _enum_map(app: Any, prefix: str) -> dict[str, int]:
-    """Resolve an enum family from the generated type library at runtime."""
-    discovered = comconstants.discover(app, name_filter=prefix)
-    return {
-        name: int(number)
-        for name, number in discovered["constants"].items()
-        if name.startswith(prefix) and not isinstance(number, bool)
-    }
-
-
-def _enum_name(members: dict[str, int], value: Any) -> str | None:
-    for name, number in members.items():
-        if number == value:
-            return name
-    return None
-
-
 def _read_datum_selectors(app: Any, frame: Any) -> dict[str, dict[str, Any]]:
     """Read LongDatum and VertDatum, naming the enum member each one holds."""
     selectors: dict[str, dict[str, Any]] = {}
     for field, spec in DATUM_SELECTORS.items():
-        members = _enum_map(app, spec["prefix"])
         entry = _read_member(frame, spec["member"], cast=int)
-        entry["enum_name"] = (
-            _enum_name(members, entry["value"]) if entry["status"] == "read"
-            else None
-        )
+        entry["enum_name"] = None
+        if entry["status"] == "read":
+            try:
+                entry["enum_name"] = native_enum.name_of(
+                    app, spec["enum_type"], entry["value"])
+            except MaxsurfValidationError:
+                pass  # an unavailable enum type leaves the name unresolved
         entry["available"] = sorted(spec["targets"])
         selectors[field] = entry
     return selectors
@@ -224,7 +208,10 @@ def _read_datum_selectors(app: Any, frame: Any) -> dict[str, dict[str, Any]]:
 
 def _read_internal_zero(app: Any, frame: Any) -> dict[str, dict[str, Any]]:
     """Read the zero position on all three axes. This is the shift evidence."""
-    directions = _enum_map(app, "msDT")
+    try:
+        directions = native_enum.members(app, "msDirectionType")
+    except MaxsurfValidationError:
+        directions = {}  # each axis then reports enum_unresolved
     zeros: dict[str, dict[str, Any]] = {}
     for axis, enum_name in INTERNAL_ZERO_DIRECTIONS:
         number = directions.get(enum_name)
@@ -488,22 +475,13 @@ def _validate_number(field: str, value: Any) -> float:
 def _resolve_enum_request(app: Any, field: str, requested: str) -> dict[str, Any]:
     """Turn a datum-selector enum name into its runtime number."""
     spec = DATUM_SELECTORS[field]
-    members = _enum_map(app, spec["prefix"])
-    permitted = {name: number for name, number in members.items()
-                 if name in spec["targets"]}
-    canonical = next(
-        (name for name in permitted
-         if name.casefold() == requested.strip().casefold()),
-        None,
-    )
-    if canonical is None:
+    resolved = native_enum.resolve(app, spec["enum_type"], requested, field)
+    if resolved["enum_name"] not in spec["targets"]:
         raise MaxsurfValidationError(
-            f"unknown {spec['member']} enum name",
-            field=field, requested=requested,
-            available=sorted(permitted) or sorted(spec["targets"]),
+            f"unknown {field} enum member", field=field, requested=requested,
+            enum_type=spec["enum_type"], available=sorted(spec["targets"]),
         )
-    return {"field": field, "member": spec["member"],
-            "enum_name": canonical, "value": permitted[canonical]}
+    return {"field": field, "member": spec["member"], **resolved}
 
 
 def _hull_value(state: dict[str, Any], key: str, mode: str) -> float:

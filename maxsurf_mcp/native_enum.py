@@ -18,10 +18,13 @@ from .errors import MaxsurfValidationError
 # caller needs it. Types missing here fail closed on the fallback path.
 _PREFIXES = {
     "msDirectionType": "msDT",
+    "msGridType": "msGT",
+    "msLongDatumType": "msLDT",
     "msMarkerType": "msMT",
     "msSurfaceLibrary": "msSL",
     "msSurfaceSkinDirection": "msSSD",
     "msSurfaceUse": "msSU",
+    "msVertDatumType": "msVDT",
 }
 
 # Type-library members per connected app object; holding the app keeps id() unique.

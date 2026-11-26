@@ -76,7 +76,7 @@ def members(app: Any, enum_type: str) -> dict[str, int]:
     if not result:
         raise MaxsurfValidationError(
             "native enum type unavailable", enum_type=enum_type,
-            source=discovered["source"] if discovered else "generated_constants")
+            source=(discovered or {}).get("source", "generated_constants"))
     return result
 
 
@@ -105,5 +105,5 @@ def constant(app: Any, name: str) -> int:
     number = discovered["constants"].get(name)
     if number is None or isinstance(number, bool):
         raise MaxsurfValidationError("native constant unavailable",
-                                     constant=name, source=discovered["source"])
+                                     constant=name, source=discovered.get("source", "generated_constants"))
     return int(number)

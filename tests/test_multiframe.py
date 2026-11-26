@@ -3,7 +3,7 @@ import json, os, tempfile, unittest
 from pathlib import Path
 from types import SimpleNamespace as NS
 from unittest.mock import Mock, patch
-from maxsurf_mcp import multiframe as m, com, constants, session, config
+from maxsurf_mcp import multiframe as m, com, constants, session, config, native_enum
 from maxsurf_mcp.errors import MaxsurfValidationError, MaxsurfSafetyError, MaxsurfCOMError, MaxsurfAnalysisError
 
 class Collection:
@@ -115,7 +115,7 @@ class MultiframeTests(unittest.TestCase):
     def test_save_disallowed_suffix(self):
         with self.assertRaises(MaxsurfSafetyError):m.save_multiframe_model.__wrapped__(str(self.root/"bad.exe"))
     def test_missing_enum_refused(self):
-        with self.assertRaises(MaxsurfValidationError):m._enum(self.app,"madeUp")
+        with self.assertRaises(MaxsurfValidationError):native_enum.constant(self.app,"madeUp")
     def test_runner_unsupported_precedes_connection(self):
         com.connect.reset_mock()
         with self.assertRaises(MaxsurfValidationError):m.run_multiframe_analysis.__wrapped__(self.token,"time_history")

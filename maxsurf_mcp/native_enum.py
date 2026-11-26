@@ -17,6 +17,7 @@ from .errors import MaxsurfValidationError
 # Fallback only. Member prefixes from the manuals' naming; add a type when a
 # caller needs it. Types missing here fail closed on the fallback path.
 _PREFIXES = {
+    "hmVtype": "hmView",
     "msDirectionType": "msDT",
     "msMarkerType": "msMT",
     "msSurfaceLibrary": "msSL",

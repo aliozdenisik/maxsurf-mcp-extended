@@ -39,6 +39,8 @@ from .errors import (
     MaxsurfValidationError,
 )
 from .guard import guarded, register
+from . import native_enum
+from .native_enum import constant as _constant
 
 #: Where transferred designs are written. Inside the runtime sandbox, never
 #: beside the user's own file.
@@ -95,21 +97,6 @@ EQ_UNITS = {
     "Trim": "m", "TrimAngle": "deg", "Heel": "deg",
     "Converged": "-", "NumOfIterations": "-",
 }
-
-
-def _constant(app: Any, name: str) -> int:
-    """Resolve one generated constant, refusing rather than guessing a number."""
-    from . import constants as comconstants
-
-    discovered = comconstants.discover(app, name_filter=name)
-    value = discovered["constants"].get(name)
-    if not isinstance(value, int) or isinstance(value, bool):
-        raise MaxsurfValidationError(
-            f"the {name} constant could not be resolved from the generated "
-            f"type library",
-            constant=name, source=discovered.get("source"),
-        )
-    return int(value)
 
 
 def _digest(path: Any) -> dict[str, Any]:
@@ -818,15 +805,12 @@ def export_stability_image(path: str, view: str = "hmViewPerspective",
     target = workspace.resolve_target(path, purpose="export_stability_image", overwrite=False,
                                       allowed_suffixes=(".png",))
     app = com.connect("stability")
-    from . import constants as comconstants
-    views = {k:v for k,v in comconstants.discover(app,name_filter="hmView")["constants"].items()
-             if k.startswith("hmView") and type(v) is int}
-    if view not in views:
-        raise MaxsurfValidationError("unknown native Stability view", available=sorted(views))
+    resolved = native_enum.resolve(app, "hmVtype", view, "view")
+    view, view_value = resolved["enum_name"], resolved["value"]
     identity = com.probe(app.Design, "Path")
     if identity["status"] != "read" or not identity["value"]:
         raise MaxsurfValidationError("Stability has no verified loaded design; open a model before exporting a view")
-    result = app.Design.SaveImage(views[view], str(target), width, height)
+    result = app.Design.SaveImage(view_value, str(target), width, height)
     if result is False or not target.is_file() or target.stat().st_size == 0:
         raise MaxsurfCOMError("Stability did not write a nonempty image", path=str(target))
     from PIL import Image

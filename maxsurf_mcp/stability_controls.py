@@ -13,7 +13,7 @@ from . import com, validation as val
 from .audit import Channel, Classification
 from .errors import MaxsurfCOMError, MaxsurfSafetyError, MaxsurfValidationError
 from .guard import guarded, register
-from .stability import _constant
+from .native_enum import constant as _constant
 
 TRIM_MODES = {
     "fixed": ("hmTMFixed", "FixedTrimValue"),

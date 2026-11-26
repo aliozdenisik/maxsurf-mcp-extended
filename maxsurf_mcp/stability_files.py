@@ -9,7 +9,8 @@ from . import validation as val
 from .audit import Channel, Classification
 from .errors import MaxsurfCOMError, MaxsurfSafetyError, MaxsurfValidationError
 from .guard import guarded, register
-from .stability import _constant, _digest, _loadcase_names
+from .native_enum import constant as _constant
+from .stability import _digest, _loadcase_names
 from .stability_controls import _boolean
 
 RESULT_TABLES = (

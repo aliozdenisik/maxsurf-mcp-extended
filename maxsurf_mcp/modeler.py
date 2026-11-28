@@ -199,6 +199,13 @@ def open_design(path: str, merge: bool = False,
         path, purpose="open_design",
         allowed_suffixes=workspace.DESIGN_SUFFIXES,
     )
+    # Modeler shows a modal error dialog on an LFS pointer and hangs; refuse before any COM call.
+    with open(source, "rb") as handle:
+        if handle.read(64).startswith(b"version https://git-lfs.github.com/spec/v1"):
+            raise MaxsurfValidationError(
+                "file is a Git LFS pointer, not a Maxsurf design; run 'git lfs pull' first",
+                purpose="open_design", path=str(source),
+            )
     audit.set_design_path(str(source))
     app = com.connect("modeler")
     app.Design.Open(str(source), merge, save_current)

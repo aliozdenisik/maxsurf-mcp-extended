@@ -1,6 +1,6 @@
 # Native API coverage and advanced automation
 
-This expanded source checkout keeps the release identifier `0.2.0-rc.6`, but
+This expanded source checkout keeps the release identifier `0.2.0-rc.7`, but
 exposes **144 default tools** rather than the original 90. Enabling diagnostics
 adds seven tools: the original `com_get`, `com_set`, `com_invoke`, and the new
 `native_call`, `native_enumerate`, `create_native_object`, `release_native_handles`. Published older

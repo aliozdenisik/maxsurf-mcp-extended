@@ -49,7 +49,7 @@ from maxsurf_mcp import native_inventory, native_automation
 from maxsurf_mcp import native_objects
 
 
-VERSION = "0.2.0-rc.6"
+VERSION = "0.2.0-rc.7"
 mcp = FastMCP("maxsurf")
 # SDK 1.29 FastMCP has no version constructor argument.
 mcp._mcp_server.version = VERSION

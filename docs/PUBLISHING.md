@@ -29,8 +29,8 @@ Keep feature-change summaries for subsequent public releases.
 
 ## GitHub release layout
 
-Use tag/title **0.2.0-rc.6 / Maxsurf MCP 0.2.0-rc.6** and mark **Pre-release**.
-Copy `docs/RELEASE_NOTES_0.2.0-rc.6.md` into the release description and convert
+Use tag/title **0.2.0-rc.7 / Maxsurf MCP 0.2.0-rc.7** and mark **Pre-release**.
+Copy `docs/RELEASE_NOTES_0.2.0-rc.7.md` into the release description and convert
 relative links to this repository's actual documentation URLs. Do not invent a
 repository URL before its owner/name has been selected.
 Attach the Claude MCPB, Codex ZIP, source ZIP and checksum JSON. Include

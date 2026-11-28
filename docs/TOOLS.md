@@ -1,4 +1,4 @@
-# Default tool catalog: 0.2.0-rc.6
+# Default tool catalog: 0.2.0-rc.7
 
 144 tools in this expanded source. Default surface only; diagnostics and legacy
 mutation remain opt-in. Older release archives may contain the original 90.

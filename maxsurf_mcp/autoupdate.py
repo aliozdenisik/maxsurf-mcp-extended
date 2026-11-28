@@ -58,9 +58,9 @@ CLIENT_ENV = ("CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_HOST_SESSION_ID", "CLAUDE_P
 # install is safer than importing packages while pip replaces them; a client that
 # gives up first only fails that start.
 PIP_TIMEOUT_S = 540.0
-LOCK_WAIT_S = PIP_TIMEOUT_S + 60.0
 FETCH_TIMEOUT_S = 20.0
 GIT_TIMEOUT_S = 60.0
+LOCK_WAIT_S = PIP_TIMEOUT_S + FETCH_TIMEOUT_S + 8 * GIT_TIMEOUT_S  # longest possible hold
 
 
 def _now() -> str:
@@ -240,15 +240,51 @@ def _install_requirements(root: Path, revision: str) -> tuple[bool, str]:
             break
     else:
         return False, "no requirements file at the target revision"
+    marker = _installer_marker(root)
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp) / name
         target.write_bytes(content.stdout)
-        result = subprocess.run(
+        pip = subprocess.Popen(
             [sys.executable, "-m", "pip", "install", "--disable-pip-version-check",
              "--no-input", "-q", "-r", str(target)],
-            cwd=root, capture_output=True, encoding="utf-8", errors="replace", timeout=PIP_TIMEOUT_S,
-            stdin=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    return result.returncode == 0, _short(result.stderr or result.stdout)
+            cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8",
+            errors="replace", stdin=subprocess.DEVNULL,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        # If the client kills this server mid-install, pip may outlive it and the
+        # lock: later starts wait on this marker instead of importing under pip.
+        marker.write_text(str(pip.pid), encoding="utf-8")
+        try:
+            output, _ = pip.communicate(timeout=PIP_TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            pip.kill()
+            output, _ = pip.communicate()
+        finally:
+            marker.unlink(missing_ok=True)
+    return pip.returncode == 0, _short(output)
+
+
+def _installer_marker(root: Path) -> Path:
+    state = _state_dir(root) or Path(tempfile.gettempdir())
+    state.mkdir(parents=True, exist_ok=True)
+    return state / "installing.pid"
+
+
+def _wait_for_orphaned_installer(state: Path, wait_s: float) -> bool:
+    """Wait for a pip started by a server that died mid-install. False if it still runs."""
+    marker = state / "installing.pid"
+    deadline = time.monotonic() + wait_s
+    while marker.exists():
+        try:
+            pid = int(marker.read_text(encoding="utf-8").strip() or 0)
+        except (OSError, ValueError):
+            pid = 0
+        if not pid_alive(pid):
+            marker.unlink(missing_ok=True)
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.5)
+    return True
 
 
 def _update(root: Path, state: Path) -> dict[str, Any]:
@@ -376,6 +412,8 @@ def start(server_file: str) -> Startup | None:
             update = {"status": "disabled", "reason": f"{DISABLE_ENV} is off"}
         elif lock is None:
             update = {"status": "skipped", "reason": "another server held the update lock too long"}
+        elif not _wait_for_orphaned_installer(state, PIP_TIMEOUT_S):
+            update = {"status": "skipped", "reason": "a dependency install from a stopped server is still running"}
         else:
             update = _update(root, state)
         startup = Startup(root, state, lock, update)

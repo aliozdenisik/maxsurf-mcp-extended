@@ -244,6 +244,26 @@ class AutoUpdateTests(unittest.TestCase):
         self.assertIsNone(startup.lock)
         self.assertEqual(self.head(), before)
 
+    def test_waits_for_a_pip_left_running_by_a_killed_server(self):
+        before = self.head()
+        self.commit_upstream({"server.py": "v2\n"})
+        pip = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+        self.addCleanup(pip.wait)
+        self.addCleanup(pip.kill)
+        self.state.mkdir(parents=True, exist_ok=True)
+        (self.state / "installing.pid").write_text(str(pip.pid))
+        with mock.patch.object(autoupdate, "PIP_TIMEOUT_S", 0.5):
+            first = self.start()
+        first.finish()  # releases the update lock, as the server does after its imports
+        update = first.update
+        self.assertEqual(update["status"], "skipped")
+        self.assertIn("still running", update["reason"])
+        self.assertEqual(self.head(), before)
+        pip.kill()
+        pip.wait()
+        self.assertEqual(self.start().update["status"], "updated")
+        self.assertFalse((self.state / "installing.pid").exists())
+
     def test_can_be_disabled(self):
         before = self.head()
         self.commit_upstream({"server.py": "v2\n"})

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Git checkout installations update themselves at every server start: a locked, fast-forward-only `origin/main` update that never resets or switches branches, installs changed dependency pins first, and waits while other servers of the checkout are running. Each running server records its commit, branch, start time and PID; `python -m maxsurf_mcp.autoupdate` lists them (`docs/INSTALL.md`).
+
 ## 0.2.0-rc.6 (pre-release, 2026-11-26)
 
 First public GitHub release. The package, requirements and verification limits are described in the [release notes](docs/RELEASE_NOTES_0.2.0-rc.6.md) and [Release status](docs/RELEASE_STATUS.md).

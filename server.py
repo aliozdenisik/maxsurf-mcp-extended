@@ -14,9 +14,15 @@ from __future__ import annotations
 
 if __name__ == "__main__":
     # Before any other maxsurf_mcp import: this may fast-forward the checkout.
-    from maxsurf_mcp import autoupdate
+    # After an update the new server.py re-runs here with STARTUP handed over
+    # (autoupdate.rerun); keep that contract when editing this block.
+    STARTUP = globals().get("STARTUP")
+    if STARTUP is None:
+        from maxsurf_mcp import autoupdate
 
-    STARTUP = autoupdate.start(__file__)
+        STARTUP = autoupdate.start(__file__)
+        if STARTUP is not None and STARTUP.needs_rerun():
+            autoupdate.rerun(__file__, STARTUP)
 else:
     STARTUP = None
 

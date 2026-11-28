@@ -55,13 +55,18 @@ class AutoUpdateTests(unittest.TestCase):
     def start(self):
         with contextlib.redirect_stderr(io.StringIO()):
             startup = autoupdate.start(self.server_file)
-        self.addCleanup(lambda: startup and startup.lock and autoupdate._unlock(startup.lock))
+        def release():
+            for handle in (startup and startup.lock, startup and startup.instance_lock):
+                if handle and not handle.closed:
+                    autoupdate._unlock(handle)
+        self.addCleanup(release)
         return startup
 
     def test_fast_forwards_to_origin_main_and_registers_the_instance(self):
         target = self.commit_upstream({"server.py": "v2\n"})
         startup = self.start()
         self.assertEqual(startup.update["status"], "updated")
+        self.assertTrue(startup.needs_rerun())
         self.assertEqual(self.head(), target)
         self.assertEqual((self.checkout / "server.py").read_text(), "v2\n")
         startup.finish()
@@ -127,11 +132,7 @@ class AutoUpdateTests(unittest.TestCase):
     def test_dependency_change_waits_while_another_server_runs(self):
         before = self.head()
         self.commit_upstream({"requirements.lock": "a==2\n"})
-        other = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
-        self.addCleanup(other.wait)
-        self.addCleanup(other.kill)
-        (self.state / "instances").mkdir(parents=True)
-        (self.state / "instances" / f"{other.pid}.json").write_text(json.dumps({"pid": other.pid}))
+        other = self.register_live_instance()
         with mock.patch.object(autoupdate, "_install_requirements") as install:
             update = self.start().update
         install.assert_not_called()
@@ -173,6 +174,64 @@ class AutoUpdateTests(unittest.TestCase):
             self.assertEqual(self.start().update["status"], "updated")
         self.assertEqual(self.head(), target)
         self.assertFalse(record.exists())
+
+    def test_a_version_bump_is_not_a_dependency_change(self):
+        (self.upstream / "pyproject.toml").write_text(
+            '[project]\nversion = "1"\ndependencies = ["a==1"]\n', encoding="utf-8")
+        self.commit_upstream({})
+        git(self.checkout, "pull", "-q")
+        self.register_live_instance()
+        target = self.commit_upstream({"pyproject.toml": '[project]\nversion = "2"\ndependencies = ["a==1"]\n'})
+        with mock.patch.object(autoupdate, "_install_requirements") as install:
+            update = self.start().update
+        install.assert_not_called()
+        self.assertEqual((update["status"], update["dependencies_changed"]), ("updated", False))
+        self.assertEqual(self.head(), target)
+
+    def test_a_pyproject_dependency_edit_is_a_dependency_change(self):
+        self.register_live_instance()
+        self.commit_upstream({"pyproject.toml": '[project]\ndependencies = ["a==2"]\n'})
+        self.assertEqual(self.start().update["status"], "deferred")
+
+    def test_an_untracked_file_in_the_way_blocks_before_anything_runs(self):
+        before = self.head()
+        self.commit_upstream({"new.txt": "from main\n"})
+        (self.checkout / "new.txt").write_text("mine\n", encoding="utf-8")
+        update = self.start().update
+        self.assertEqual(update["status"], "skipped")
+        self.assertIn("new.txt", update["reason"])
+        self.assertEqual(((self.checkout / "new.txt").read_text(), self.head()), ("mine\n", before))
+
+    def test_line_ending_noise_is_not_a_local_change(self):
+        git(self.checkout, "config", "core.autocrlf", "true")
+        os.utime(self.checkout / "server.py", (1, 1))
+        target = self.commit_upstream({"server.py": "v2\n"})
+        self.assertEqual(self.start().update["status"], "updated")
+        self.assertEqual(self.head(), target)
+
+    def test_liveness_follows_the_instance_lock_not_the_pid(self):
+        startup = self.start()
+        startup.finish()
+        [record] = autoupdate.status(self.checkout)["instances"]
+        self.assertTrue(record["alive"])
+        autoupdate._unlock(startup.instance_lock)  # what the OS does when the server dies
+        self.assertEqual(autoupdate.status(self.checkout)["instances"], [])
+        self.assertFalse(startup.record_path.exists())
+
+    def test_malformed_records_are_ignored(self):
+        (self.state / "instances").mkdir(parents=True)
+        for name, body in {"1": "null", "2": '{"pid": null}', "3": "{bad", "4": '{"pid": "x"}'}.items():
+            (self.state / "instances" / f"{name}.json").write_text(body)
+        self.assertEqual(autoupdate.status(self.checkout)["instances"], [])
+        self.assertEqual(self.start().update["status"], "up_to_date")
+
+    def register_live_instance(self):
+        other = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+        self.addCleanup(other.wait)
+        self.addCleanup(other.kill)
+        (self.state / "instances").mkdir(parents=True, exist_ok=True)
+        (self.state / "instances" / f"{other.pid}.json").write_text(json.dumps({"pid": other.pid}))
+        return other
 
     def test_a_held_lock_skips_the_update_instead_of_racing(self):
         before = self.head()

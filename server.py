@@ -12,6 +12,20 @@ production tool surface unless they are explicitly enabled:
 
 from __future__ import annotations
 
+if __name__ == "__main__":
+    # Before any other maxsurf_mcp import: this may fast-forward the checkout.
+    # After an update the new server.py re-runs here with STARTUP handed over
+    # (autoupdate.rerun); keep that contract when editing this block.
+    STARTUP = globals().get("STARTUP")
+    if STARTUP is None:
+        from maxsurf_mcp import autoupdate
+
+        STARTUP = autoupdate.start(__file__)
+        if STARTUP is not None and STARTUP.needs_rerun():
+            autoupdate.rerun(__file__, STARTUP)
+else:
+    STARTUP = None
+
 from maxsurf_mcp import comcache
 
 # Configure pywin32 before importing session/com modules. A corrupt wrapper in
@@ -289,6 +303,7 @@ def startup_report() -> dict[str, object]:
     return {
         "server": "maxsurf",
         "version": VERSION,
+        "build": STARTUP.describe() if STARTUP is not None else None,
         "com_cache": COM_CACHE,
         "interpreter": interpreter_report(),
         "registered_tools": sorted(REGISTERED_TOOLS),
@@ -336,6 +351,8 @@ def main():
     # The full startup report still goes to the audit log, not to the stream.
     import sys
 
+    if STARTUP is not None:
+        STARTUP.finish()
     report = startup_report()
     interp = report["interpreter"]
     print(

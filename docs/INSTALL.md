@@ -240,6 +240,28 @@ Add a `maxsurf` entry under `mcpServers`. If other servers are present, merge th
 
 Save the JSON, fully exit and reopen Claude Desktop, then start a new conversation. This is an alternative to the MCPB extension; avoid enabling both copies in the same client. The configuration location and Developer menu are described in the [official MCP local-server guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers).
 
+## Git checkout installations: automatic updates
+
+If the source directory is a `git clone` and the client starts `server.py` directly (the Codex and Claude configurations above), every server start brings that checkout up to date with `origin/main` before loading any code. You do not need to run `git pull`. ZIP, MCPB and plugin installations are not git checkouts and are never changed.
+
+Each start runs these steps under a lock that belongs to the checkout:
+
+1. It continues only when the checkout is on `main` with no tracked local changes.
+2. `git fetch origin main`, then `git merge --ff-only origin/main`. The updater never resets, stashes, switches branches or discards local commits or edits; the fast-forward itself applies upstream changes, including deleted files. Any refusal (offline, local commits, local edits, another branch) leaves the checkout as it was, and the server starts on its current code.
+3. If `pyproject.toml`, `requirements.lock` or `requirements.txt` changed, the new `requirements.lock` is installed into the server's interpreter *before* the fast-forward. This happens only when no other server of this checkout is running, because installing packages under a running server can break it. Otherwise the update waits for a later start. If the install fails, the server stays on the old commit.
+
+Servers that are already running are not stopped and keep the code they started with: each server loads all of its modules before it releases the lock. A session picks up a newer `main` the next time it starts its server.
+
+Every running server records its commit, branch, start time, PID and parent PID. To list them, marked `current` or `OUTDATED`, run this from the checkout:
+
+```powershell
+.\.venv\Scripts\python.exe -m maxsurf_mcp.autoupdate
+```
+
+Add `--json` for machine-readable output. The same record is in the `server_start` audit entry (`build`), and the server writes one `maxsurf-mcp update: ...` line to its stderr log. The update history is in `.git/maxsurf-mcp/update.log`.
+
+To turn updates off for one client, set `MAXSURF_MCP_AUTO_UPDATE=0` in its MCP `env` block. Develop in a separate `git worktree`, never in the checkout the clients run (see `CLAUDE.md`).
+
 ## Other AI coding agents
 
 Any client that supports local MCP over stdio can launch this source checkout.

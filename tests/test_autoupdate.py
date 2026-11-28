@@ -252,7 +252,7 @@ class AutoUpdateTests(unittest.TestCase):
         self.addCleanup(pip.kill)
         self.state.mkdir(parents=True, exist_ok=True)
         (self.state / "installing.pid").write_text(str(pip.pid))
-        with mock.patch.object(autoupdate, "PIP_TIMEOUT_S", 0.5):
+        with mock.patch.object(autoupdate, "INSTALL_TIMEOUT_S", 0.5):
             first = self.start()
         first.finish()  # releases the update lock, as the server does after its imports
         update = first.update
@@ -263,6 +263,13 @@ class AutoUpdateTests(unittest.TestCase):
         pip.wait()
         self.assertEqual(self.start().update["status"], "updated")
         self.assertFalse((self.state / "installing.pid").exists())
+
+    def test_installs_with_uv_into_this_interpreter_and_falls_back_to_pip(self):
+        with mock.patch.object(autoupdate.shutil, "which", return_value="C:/bin/uv.exe"):
+            self.assertEqual(autoupdate._installer(),
+                             ["C:/bin/uv.exe", "pip", "install", "--python", sys.executable])
+        with mock.patch.object(autoupdate.shutil, "which", return_value=None):
+            self.assertEqual(autoupdate._installer()[:4], [sys.executable, "-m", "pip", "install"])
 
     def test_can_be_disabled(self):
         before = self.head()

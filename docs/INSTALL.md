@@ -248,7 +248,7 @@ Each start runs these steps under a lock that belongs to the checkout:
 
 1. It continues only when the checkout is on `main` with no tracked local changes.
 2. `git fetch origin main`, then `git merge --ff-only origin/main`. The updater never resets, stashes, switches branches or discards local commits or edits; the fast-forward itself applies upstream changes, including deleted files. Any refusal (offline, local commits, local edits, another branch) leaves the checkout as it was, and the server starts on its current code.
-3. If `pyproject.toml`, `requirements.lock` or `requirements.txt` changed, the new `requirements.lock` is installed into the server's interpreter *before* the fast-forward. This happens only when no other server of this checkout is running, because installing packages under a running server can break it. Otherwise the update waits for a later start. If the install fails, the server stays on the old commit.
+3. If the dependency pins changed (`requirements.lock`, `requirements.txt` or the dependency fields of `pyproject.toml`), the new `requirements.lock` is installed into the server's interpreter *before* the fast-forward, with [uv](https://docs.astral.sh/uv/) when `uv` is on `PATH` (much faster), otherwise with pip. This happens only when no other server of this checkout is running, because installing packages under a running server can break it. Otherwise the update waits for a later start. If the install fails, the server stays on the old commit.
 
 Servers that are already running are not stopped and keep the code they started with: each server loads all of its modules before it releases the lock. A session picks up a newer `main` the next time it starts its server.
 

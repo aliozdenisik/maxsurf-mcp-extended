@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- The checkout auto-update installs changed dependency pins with `uv` when it is on `PATH` (pip otherwise), so the install inside a server start is much shorter.
+- The auto-update code is Windows-only, like the server: the POSIX locking and liveness paths are removed.
+- Hosted CI (GitHub Actions) is removed; the offline suite, `validate_release.py` and `smoke_stdio.py` are run locally before merging (`CLAUDE.md`).
+
 ## 0.2.0-rc.7 (pre-release, 2026-11-28)
 
 ### Added

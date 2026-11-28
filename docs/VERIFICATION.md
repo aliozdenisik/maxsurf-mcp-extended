@@ -86,7 +86,7 @@ fail this integration check; it remains outside offline discovery.
 Use a new output directory for each build. The artifact verifier checks archive
 hashes, integrity and source identity, then launches extracted MCPB and Codex
 servers from relocated paths with spaces and an unrelated working directory.
-CI runs it before artifact upload. These protocol checks do not claim a
+Run it on every new build before publishing. These protocol checks do not claim a
 Claude/Codex GUI install/uninstall lifecycle.
 
 ## Expanded source checks: 2026-10-11
@@ -103,7 +103,7 @@ every default input schema with the checked snapshot.
   --python .\.venv\Scripts\python.exe --entry .\server.py
 ```
 
-Installed-native checks are explicit, separate from offline CI:
+Installed-native checks are explicit, separate from the offline suite:
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest tests.native_wrapper_contract -v

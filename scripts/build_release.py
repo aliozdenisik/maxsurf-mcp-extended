@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ROOT_FILES = {"server.py", "pyproject.toml", "requirements.txt", "requirements.lock",
               "README.md", "LICENSE", "SECURITY.md", "THIRD_PARTY_NOTICES.md",
               "CHANGELOG.md", ".gitignore"}
-SOURCE_DIRS = ("maxsurf_mcp", "tests", "scripts", "docs", "extension", ".github", "plugins", ".agents")
+SOURCE_DIRS = ("maxsurf_mcp", "tests", "scripts", "docs", "extension", "plugins", ".agents")
 SUFFIXES = {".py", ".json", ".toml", ".md", ".txt", ".ps1", ".yml", ".yaml", ".png"}
 FORBIDDEN = {"__pycache__", ".git", "runtime", "gen_py", ".venv", "lib", "build", "dist"}
 

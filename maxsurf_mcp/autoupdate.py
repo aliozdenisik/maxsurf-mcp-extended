@@ -4,7 +4,7 @@
 any other ``maxsurf_mcp`` module. For a checkout whose current branch is ``main``:
 
 1. An exclusive per-checkout OS lock serialises concurrent session starts, so
-   git and pip never run twice at once and no server imports code while
+   git and the dependency installer never run twice at once and no server imports code while
    another one is updating the files.
 2. ``git fetch origin main``, then ``git merge --ff-only origin/main``, only
    when there are no tracked changes and ``HEAD`` is an ancestor of
@@ -28,24 +28,17 @@ import atexit
 import datetime as _dt
 import importlib
 import json
+import msvcrt  # Windows only, like the server
 import os
 from pathlib import Path
 import pkgutil
 import runpy
+import shutil
 import subprocess
 import sys
 import tempfile
 import time
 from typing import Any
-
-try:  # pragma: no cover - platform specific
-    import msvcrt
-except ImportError:
-    msvcrt = None
-try:  # pragma: no cover - platform specific
-    import fcntl
-except ImportError:
-    fcntl = None
 
 BRANCH = "main"
 REMOTE = "origin"
@@ -55,12 +48,12 @@ CLIENT_ENV = ("CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_HOST_SESSION_ID", "CLAUDE_P
               "CODEX_THREAD_ID", "CODEX_SESSION_ID")
 
 # Starting servers normally hold the lock for seconds. Waiting out a dependency
-# install is safer than importing packages while pip replaces them; a client that
+# install is safer than importing packages while the installer replaces them; a client that
 # gives up first only fails that start.
-PIP_TIMEOUT_S = 540.0
+INSTALL_TIMEOUT_S = 540.0
 FETCH_TIMEOUT_S = 20.0
 GIT_TIMEOUT_S = 60.0
-LOCK_WAIT_S = PIP_TIMEOUT_S + FETCH_TIMEOUT_S + 8 * GIT_TIMEOUT_S  # longest possible hold
+LOCK_WAIT_S = INSTALL_TIMEOUT_S + FETCH_TIMEOUT_S + 8 * GIT_TIMEOUT_S  # longest possible hold
 
 
 def _now() -> str:
@@ -96,11 +89,8 @@ def _short(text: str) -> str:
 
 def _try_lock(handle: Any) -> bool:
     try:
-        if msvcrt is not None:
-            handle.seek(0)
-            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
-        elif fcntl is not None:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
         return True
     except OSError:
         return False
@@ -110,11 +100,8 @@ def _unlock(handle: Any) -> None:
     if handle.closed:
         return
     try:
-        if msvcrt is not None:
-            handle.seek(0)
-            msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
-        elif fcntl is not None:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
     except OSError:
         pass
     handle.close()
@@ -144,25 +131,17 @@ def pid_alive(pid: int) -> bool:
     # update; compare process creation times if that ever matters.
     if pid <= 0:
         return False
-    if sys.platform == "win32":
-        import ctypes
-        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-        handle = kernel32.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED_INFORMATION
-        if not handle:
-            return ctypes.get_last_error() == 5  # access denied: it exists
-        try:
-            code = ctypes.c_ulong()
-            kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
-            return code.value == 259  # STILL_ACTIVE
-        finally:
-            kernel32.CloseHandle(handle)
+    import ctypes  # never os.kill(pid, 0): on Windows that terminates the process
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    handle = kernel32.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED_INFORMATION
+    if not handle:
+        return ctypes.get_last_error() == 5  # access denied: it exists
     try:
-        os.kill(pid, 0)  # signal 0 only probes on POSIX; never call this on Windows
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
+        code = ctypes.c_ulong()
+        kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
+        return code.value == 259  # STILL_ACTIVE
+    finally:
+        kernel32.CloseHandle(handle)
 
 
 def _instance_alive(record_path: Path, pid: int) -> bool:
@@ -244,23 +223,30 @@ def _install_requirements(root: Path, revision: str) -> tuple[bool, str]:
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp) / name
         target.write_bytes(content.stdout)
-        pip = subprocess.Popen(
-            [sys.executable, "-m", "pip", "install", "--disable-pip-version-check",
-             "--no-input", "-q", "-r", str(target)],
+        installer = subprocess.Popen(
+            [*_installer(), "-q", "-r", str(target)],
             cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8",
             errors="replace", stdin=subprocess.DEVNULL,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-        # If the client kills this server mid-install, pip may outlive it and the
-        # lock: later starts wait on this marker instead of importing under pip.
-        marker.write_text(str(pip.pid), encoding="utf-8")
+        # If the client kills this server mid-install, the installer may outlive it and the
+        # lock: later starts wait on this marker instead of importing under it.
+        marker.write_text(str(installer.pid), encoding="utf-8")
         try:
-            output, _ = pip.communicate(timeout=PIP_TIMEOUT_S)
+            output, _ = installer.communicate(timeout=INSTALL_TIMEOUT_S)
         except subprocess.TimeoutExpired:
-            pip.kill()
-            output, _ = pip.communicate()
+            installer.kill()
+            output, _ = installer.communicate()
         finally:
             marker.unlink(missing_ok=True)
-    return pip.returncode == 0, _short(output)
+    return installer.returncode == 0, _short(output)
+
+
+def _installer() -> list[str]:
+    """uv when it is on PATH (much faster), otherwise this interpreter's pip."""
+    uv = shutil.which("uv")
+    if uv:
+        return [uv, "pip", "install", "--python", sys.executable]
+    return [sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "--no-input"]
 
 
 def _installer_marker(root: Path) -> Path:
@@ -270,7 +256,7 @@ def _installer_marker(root: Path) -> Path:
 
 
 def _wait_for_orphaned_installer(state: Path, wait_s: float) -> bool:
-    """Wait for a pip started by a server that died mid-install. False if it still runs."""
+    """Wait for an installer started by a server that died mid-install. False if it still runs."""
     marker = state / "installing.pid"
     deadline = time.monotonic() + wait_s
     while marker.exists():
@@ -412,7 +398,7 @@ def start(server_file: str) -> Startup | None:
             update = {"status": "disabled", "reason": f"{DISABLE_ENV} is off"}
         elif lock is None:
             update = {"status": "skipped", "reason": "another server held the update lock too long"}
-        elif not _wait_for_orphaned_installer(state, PIP_TIMEOUT_S):
+        elif not _wait_for_orphaned_installer(state, INSTALL_TIMEOUT_S):
             update = {"status": "skipped", "reason": "a dependency install from a stopped server is still running"}
         else:
             update = _update(root, state)

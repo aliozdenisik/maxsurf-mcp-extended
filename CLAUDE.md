@@ -9,12 +9,12 @@ MCP server (FastMCP, stdio) that drives locally installed Bentley Maxsurf (Model
 Use the venv interpreter (`.\scripts\install.ps1 -Python <py312.exe>` creates `.venv`).
 
 ```powershell
-# Offline suite (no Maxsurf needed): this is what CI runs
+# Offline suite (no Maxsurf needed): run before every merge (there is no hosted CI)
 .\.venv\Scripts\python.exe -m unittest discover -s tests -t . -q
 # One module / one test
 .\.venv\Scripts\python.exe -m unittest tests.test_hydrostatics -v
 .\.venv\Scripts\python.exe -m unittest tests.test_module_structure.SchemaSnapshotTests -v
-# Remaining CI steps
+# Remaining pre-merge and release steps
 .\.venv\Scripts\python.exe scripts/validate_release.py
 .\.venv\Scripts\python.exe scripts/smoke_stdio.py --python .\.venv\Scripts\python.exe --entry server.py
 .\.venv\Scripts\python.exe scripts/build_release.py --output-dir dist/<new-dir>
@@ -57,7 +57,7 @@ The primary checkout (the clone that Claude and Codex MCP configurations point a
   git worktree add .claude/worktrees/<name> -b <branch> origin/main
   ```
 
-  `.claude/` is gitignored. Run tests in the worktree with the primary checkout's interpreter (`../../../.venv/Scripts/python.exe` on Windows, `../../../.venv/bin/python` on macOS) or your own venv. After the merge, run `git worktree remove .claude/worktrees/<name>` and delete the branch.
+  `.claude/` is gitignored. Run tests in the worktree with the primary checkout's interpreter (`../../../.venv/Scripts/python.exe`) or your own venv. After the merge, run `git worktree remove .claude/worktrees/<name>` and delete the branch.
 - `main` can be checked out in only one worktree. Never check `main` out in a development worktree; that detaches the primary checkout and stops its updates.
 - A dependency change merged to `main` is installed at the first server start when no other server of the checkout is running. Until then, every start defers the whole update (`update=deferred`).
 - To verify which code each running server loaded, run `python -m maxsurf_mcp.autoupdate` from the primary checkout. Never stop a server or its session to force an update: running analyses keep their code until the session restarts its server.

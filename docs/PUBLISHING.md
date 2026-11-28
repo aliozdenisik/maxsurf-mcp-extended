@@ -1,7 +1,7 @@
 # Maintainer release and publication checklist
 
 Publish this standalone tree, not its parent development workspace. The source
-ZIP is the safest reviewed upload source. Keep `.github`, `.agents` and plugin
+ZIP is the safest reviewed upload source. Keep `.agents` and plugin
 metadata; exclude local `runtime`, `build`, `dist`, `.venv` and generated wrappers.
 Do not include manuals, samples, designs, credentials, private logs or engineering
 training/rule/recipe files. Preserve the MIT license and Copyright (c) 2026 Ismail Hakki Celik.
